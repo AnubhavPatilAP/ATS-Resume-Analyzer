@@ -30,6 +30,7 @@ Give me the percentage of match if the resume matches the job description. First
 Assign the percentage matching based on jd and the missing keyword with high accuracy
 resume:{text}
 description:{jd}
+.
 Give the following data in detail:
 Name:
 Contact: 
