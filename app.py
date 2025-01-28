@@ -37,8 +37,18 @@ Profile match :
 Missing keywords:
 Profile Summary:
 Tips: (In this section give tips to improve resume.)
-What You did well: (In this section give the good points about the resume.)
+What You did well: (Analyze the resume and point out the strengths of the resume, its structure, etc and give feedback)
 """
+
+input_prompt2 = """
+You are a skilled ATS (Applicant Tracking System) scanner with a deep understanding of data science and ATS functionality.
+The resume is: {text}
+Analyze the resume uploaded and answer to the following in detail:
+
+{cust}
+
+"""
+
 
 ## streamlit app
 st.title("AtsProject")
@@ -47,11 +57,16 @@ jd = st.text_area("Paste the job description")
 uploaded_file = st.file_uploader("Upload Your resume", type="pdf", help="Please upload your pdf")
 
 submit = st.button("Analyze")
-
-
+cust = st.text_area("Ask what you want to know about your resume: ")
+submit2 = st.button("Submit")
 if submit:
     if uploaded_file is not None:
         text = input_pdf_text(uploaded_file)
         response = get_gemini_response(input_prompt.format(text=text, jd=jd))  # Passed the 'text' and 'jd' values
         st.subheader(response)
 
+if submit2:
+    if uploaded_file is not None:
+        text = input_pdf_text(uploaded_file)
+        response = get_gemini_response(input_prompt2.format(text=text,cust=cust))  # Passed the 'text' and 'jd' values
+        st.subheader(response)
