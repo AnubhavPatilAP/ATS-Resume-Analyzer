@@ -41,9 +41,10 @@ What You did well: (Analyze the resume and point out the strengths of the resume
 """
 
 input_prompt2 = """
-You are a skilled ATS (Applicant Tracking System) scanner with a deep understanding of data science and ATS functionality.
+You are a skilled ATS (Applicant Tracking System) scanner with a deep understanding of ATS functionality.
 The resume is: {text}
-Analyze the resume uploaded and answer to the following in detail:
+and the job description is : {jd}
+Analyze the resume uploaded and answer to the following prompt in detail:
 
 {cust}
 
@@ -81,7 +82,7 @@ if "latest_responses2" not in st.session_state:
 if submit2:
     if uploaded_file is not None:
         text = input_pdf_text(uploaded_file)
-        responses2 = get_gemini_response(input_prompt2.format(text=text,cust=cust))  # Passed the 'text' and 'jd' values
+        responses2 = get_gemini_response(input_prompt2.format(text=text,jd=jd,cust=cust))  # Passed the 'text' and 'jd' values
         st.session_state.latest_responses2 = responses2
   
 
