@@ -37,8 +37,18 @@ Profile match :
 Missing keywords:
 Profile Summary:
 Tips: (In this section give tips to improve resume.)
-What You did well: (In this section give the good points about the resume.)
+What You did well: (Analyze the resume and point out the strengths of the resume, its structure, etc and give feedback)
 """
+
+input_prompt2 = """
+You are a skilled ATS (Applicant Tracking System) scanner with a deep understanding of data science and ATS functionality.
+The resume is: {text}
+Analyze the resume uploaded and answer to the following in detail:
+
+{cust}
+
+"""
+
 
 ## streamlit app
 st.title("AtsProject")
@@ -49,9 +59,31 @@ uploaded_file = st.file_uploader("Upload Your resume", type="pdf", help="Please 
 submit = st.button("Analyze")
 
 
+if "responses1" not in st.session_state:
+    st.session_state.responses1 = []  # Stores responses from first button
+
+
+
 if submit:
     if uploaded_file is not None:
         text = input_pdf_text(uploaded_file)
-        response = get_gemini_response(input_prompt.format(text=text, jd=jd))  # Passed the 'text' and 'jd' values
-        st.subheader(response)
+        responses1 = get_gemini_response(input_prompt.format(text=text, jd=jd))  # Passed the 'text' and 'jd' values
+        st.session_state.responses1.append(responses1)
 
+for resp in st.session_state.responses1:
+    st.write(resp)
+
+cust = st.text_area("Ask what you want to know about your resume: ")
+submit2 = st.button("Submit")
+
+if "latest_responses2" not in st.session_state:
+    st.session_state.latest_responses2 = ""
+
+if submit2:
+    if uploaded_file is not None:
+        text = input_pdf_text(uploaded_file)
+        responses2 = get_gemini_response(input_prompt2.format(text=text,cust=cust))  # Passed the 'text' and 'jd' values
+        st.session_state.latest_responses2 = responses2
+  
+
+st.write(st.session_state.latest_responses2)   
