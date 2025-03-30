@@ -52,6 +52,7 @@ Analyze the resume uploaded and answer to the following prompt in detail:
 
 
 ## streamlit app
+st.page_link("Home.py", label="Home", icon="🚀")
 st.title("Individual Resume Analyzer")
 jd = st.text_area("Paste the job description")
 uploaded_file = st.file_uploader("Upload Your resume", type="pdf", help="Please upload your pdf")
