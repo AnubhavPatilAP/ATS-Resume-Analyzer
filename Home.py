@@ -1,15 +1,15 @@
 import streamlit as st
 
-
 st.set_page_config(page_title="Homepage", page_icon="🏡")
-st.title("🏡 Welcome to the Homepage")
-st.write("Click the button below to go to the App page.")
+from manager import NavigationManager  
 
-# Button to navigate
-st.page_link("pages/IndividualAnalyzer.py", label="Analyze Your Resume", icon="🚀")
+# Navigator
+nav_manager = NavigationManager()
+nav_manager.top_nav()
 
+# Main content
+st.title("🎯 Welcome to the Resume Analyzer")
+st.write("Click below to analyze your resume.")
 
-
-
-
+    
 

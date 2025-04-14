@@ -2,6 +2,13 @@ import streamlit as st
 import firebase_admin
 from firebase_admin import credentials, auth
 import requests
+from manager import NavigationManager  
+
+# Navigator
+nav_manager = NavigationManager()
+nav_manager.top_nav()
+
+
 
 # Initialize Firebase Admin SDK
 if not firebase_admin._apps:

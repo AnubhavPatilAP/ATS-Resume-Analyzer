@@ -2,6 +2,13 @@ import streamlit as st
 import google.generativeai as genai
 import os
 import PyPDF2 as pdf
+from manager import NavigationManager  
+
+# Navigator
+nav_manager = NavigationManager()
+nav_manager.top_nav()
+
+
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -52,7 +59,7 @@ Analyze the resume uploaded and answer to the following prompt in detail:
 
 
 ## streamlit app
-st.page_link("Home.py", label="Home", icon="🚀")
+
 st.title("Individual Resume Analyzer")
 jd = st.text_area("Paste the job description")
 uploaded_file = st.file_uploader("Upload Your resume", type="pdf", help="Please upload your pdf")
