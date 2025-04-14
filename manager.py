@@ -6,7 +6,7 @@ class NavigationManager:
 
     def top_nav(self):
         # Use tighter column widths to avoid large gaps
-        col1, col2, col3, spacer = st.columns([1.1, 2.9, 1, 10])
+        col1, col2, col3, spacer = st.columns([1.2, 3.1, 1, 10])
 
         with col1:
             st.page_link("Home.py", label="Home")
