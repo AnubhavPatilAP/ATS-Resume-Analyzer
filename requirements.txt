@@ -2,3 +2,7 @@ streamlit
 google-generativeai
 python-dotenv
 PyPDF2
+pdfplumber
+Pillow 
+firebase-admin 
+openpyxl
