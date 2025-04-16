@@ -3,11 +3,18 @@ import google.generativeai as genai
 import os
 import PyPDF2 as pdf
 from manager import NavigationManager  
+from manager import require_login
+from manager import apply_sidebar_style  
+
+# Apply sidebar styling
+apply_sidebar_style()
 
 # Navigator
 nav_manager = NavigationManager()
 nav_manager.top_nav()
 
+#Login check
+require_login()
 
 
 from dotenv import load_dotenv
@@ -24,9 +31,9 @@ def get_gemini_response(input):
 def input_pdf_text(uploaded_file):
     reader = pdf.PdfReader(uploaded_file)
     text = ""
-    for page_num in range(len(reader.pages)):  # Fixed typo here (changed 'age' to 'page_num')
-        page = reader.pages[page_num]  # Corrected the page extraction
-        text += str(page.extract_text())  # Corrected method name to 'extract_text'
+    for page_num in range(len(reader.pages)):  
+        page = reader.pages[page_num]  
+        text += str(page.extract_text())  
     return text
 
 # Prompts for different actions

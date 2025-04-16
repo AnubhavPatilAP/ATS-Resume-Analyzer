@@ -3,6 +3,10 @@ import firebase_admin
 from firebase_admin import credentials, auth
 import requests
 from manager import NavigationManager  
+from manager import apply_sidebar_style  
+
+# Apply sidebar styling
+apply_sidebar_style()
 
 # Navigator
 nav_manager = NavigationManager()
