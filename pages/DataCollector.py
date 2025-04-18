@@ -10,6 +10,8 @@ import pytesseract
 import firebase_admin
 from firebase_admin import credentials, firestore
 import time  # Import the time module
+from openpyxl import Workbook  # Corrected import
+import io
 
 # Load environment variables
 load_dotenv()
@@ -39,7 +41,7 @@ if google_api_key:
         # --- List Available Models (TEMPORARY - CRITICAL FIX) ---
         try:
             available_models = [m.name for m in genai.list_models()]
-            st.info(f"Available Gemini models: {available_models}")  # Show models to user
+            # st.info(f"Available Gemini models: {available_models}")  # Remove this line
             if not available_models:  # Check if the list is empty
                 st.error("No Gemini models found. Please check your API key and connection.")
                 st.stop()  # Stop execution if no models are available
@@ -48,10 +50,16 @@ if google_api_key:
             st.stop()  # Stop execution if listing models fails
         # --- End of List Available Models ---
 
-        model_name_to_try = ['models/gemini-1.5-pro-latest', 'models/gemini-1.5-pro', 'models/gemini-1.0-pro-vision-latest', 'models/gemini-pro-vision']  # <--- UPDATE THIS LINE
+        model_name_to_try = [
+            'models/gemini-1.5-flash',  # Use Gemini 1.5 Flash
+            'models/gemini-1.5-pro-latest',
+            'models/gemini-1.5-pro',
+            'models/gemini-pro-vision',
+            'models/gemini-1.0-pro-vision-latest'
+        ]
 
         for model_name in model_name_to_try:
-            if model_name in available_models: # Check if the model is in the list
+            if model_name in available_models:  # Check if the model is in the list
                 try:
                     model = genai.GenerativeModel(model_name)
                     st.info(f"Successfully initialized model: {model_name}")
@@ -63,7 +71,7 @@ if google_api_key:
 
         if not model:
             st.error("Failed to initialize any of the specified Gemini models.  The application cannot proceed.")
-            st.stop() # Stop if no model
+            st.stop()  # Stop if no model
 
     except Exception as e:
         st.error(f"Error configuring Gemini API: {e}")
@@ -146,7 +154,7 @@ def save_to_firestore(user_id, applicants, excel_data):
     try:
         # Store individual applicants
         for idx, applicant in enumerate(applicants):
-            doc_id = f"applicant_{idx+1}"
+            doc_id = f"applicant_{idx + 1}"
             user_ref.collection("applicants").document(doc_id).set(applicant)
 
         # Store aggregate Excel file as base64 or raw text
@@ -185,6 +193,9 @@ if uploaded_files:
     st.info("Processing files with Gemini. Please wait...")
     rows = []
     output_box = st.empty()  # Create an empty container for the output
+    progress_bar = st.progress(0)  # Add a progress bar
+    total_files = len(uploaded_files)
+    progress_text = st.empty() # Add a placeholder for the progress text
 
     for i, file in enumerate(uploaded_files):
         file_ext = file.name.split('.')[-1].lower()
@@ -206,41 +217,38 @@ if uploaded_files:
                     extracted_info["Resume File"] = file.name
                     rows.append(extracted_info)
 
-                    # Display the result in the output box
-                    output_box.write(f"Processed {file.name}:\n{extracted_text}")
-                    time.sleep(5)  # Wait for 5 seconds
-
                 else:
                     st.warning(f"Could not extract information from {file.name} using Gemini.")
-                    output_box.warning(f"Could not extract information from {file.name} using Gemini.")  # show in output box
+
             else:
                 st.warning(f"Could not extract text from {file.name}.")
-                output_box.warning(f"Could not extract text from {file.name}.") # show in output box
 
         except Exception as e:
             st.error(f"Error processing {file.name}: {e}")
-            output_box.error(f"Error processing {file.name}: {e}") # show in output box
+
+        progress = (i + 1) / total_files  # Calculate progress
+        progress_bar.progress(progress)  # Update progress bar
+        progress_text.text(f"Processed {i + 1} of {total_files} files.")  # Update the progress text
 
     if rows:
         df = pd.DataFrame(rows)
         st.success(f"Processed {len(rows)} files successfully using Gemini.")
         st.dataframe(df)
 
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as tmp:
-            df.to_excel(tmp.name, index=False, sheet_name="Applicants")
-            excel_path = tmp.name
+        # Create Excel file in memory
+        output = io.BytesIO()
+        df.to_excel(output, index=False, sheet_name="Applicants")
+        output.seek(0)
+        excel_data = output.read()
 
-        with open(excel_path, "rb") as f:
-            st.download_button(
-                label="Download Aggregated Excel",
-                data=f,
-                file_name="aggregated_resumes.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            )
+        st.download_button(
+            label="Download Aggregated Excel",
+            data=excel_data,
+            file_name="aggregated_resumes.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
 
         if st.button("Upload to Firestore"):
-            with open(excel_path, "rb") as f:
-                excel_data = f.read()
-            save_to_firestore(user_id, rows, excel_data.decode('latin1'))
+            save_to_firestore(user_id, rows, excel_data)
     else:
         st.warning("No data extracted from the uploaded files.")
