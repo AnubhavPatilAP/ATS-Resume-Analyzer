@@ -9,8 +9,9 @@ from PIL import Image
 import pytesseract
 import firebase_admin
 from firebase_admin import credentials, firestore
-import time  # Import the time module
-from openpyxl import Workbook  # Corrected import
+import time
+from openpyxl import load_workbook
+from openpyxl.utils import get_column_letter
 import io
 
 # Load environment variables
@@ -38,20 +39,17 @@ if google_api_key:
     try:
         genai.configure(api_key=google_api_key)
 
-        # --- List Available Models (TEMPORARY - CRITICAL FIX) ---
         try:
             available_models = [m.name for m in genai.list_models()]
-            # st.info(f"Available Gemini models: {available_models}")  # Remove this line
-            if not available_models:  # Check if the list is empty
-                st.error("No Gemini models found. Please check your API key and connection.")
-                st.stop()  # Stop execution if no models are available
+            if not available_models:
+                st.error("No Gemini models found.")
+                st.stop()
         except Exception as e_list:
             st.error(f"Error listing models: {e_list}")
-            st.stop()  # Stop execution if listing models fails
-        # --- End of List Available Models ---
+            st.stop()
 
         model_name_to_try = [
-            'models/gemini-1.5-flash',  # Use Gemini 1.5 Flash
+            'models/gemini-1.5-flash',
             'models/gemini-1.5-pro-latest',
             'models/gemini-1.5-pro',
             'models/gemini-pro-vision',
@@ -59,25 +57,25 @@ if google_api_key:
         ]
 
         for model_name in model_name_to_try:
-            if model_name in available_models:  # Check if the model is in the list
+            if model_name in available_models:
                 try:
                     model = genai.GenerativeModel(model_name)
                     st.info(f"Successfully initialized model: {model_name}")
-                    break  # Exit the loop once a model is successfully initialized
+                    break
                 except Exception as e:
                     st.error(f"Error initializing model '{model_name}': {e}")
             else:
-                st.error(f"Model '{model_name}' not found in available models.")
+                st.error(f"Model '{model_name}' not found.")
 
         if not model:
-            st.error("Failed to initialize any of the specified Gemini models.  The application cannot proceed.")
-            st.stop()  # Stop if no model
+            st.error("Failed to initialize Gemini model.")
+            st.stop()
 
     except Exception as e:
         st.error(f"Error configuring Gemini API: {e}")
         st.stop()
 else:
-    st.error("GOOGLE_API_KEY not found in the environment variables or .env file.")
+    st.error("GOOGLE_API_KEY not found.")
     st.stop()
 
 
@@ -105,24 +103,23 @@ def extract_text_from_image(file):
 
 def extract_info_with_gemini(resume_text, timeout=90):
     if not model:
-        st.warning("Gemini API is not configured.")
+        st.warning("Gemini API not configured.")
         return None
 
     prompt = f"""
-    Extract the following information from the resume text provided below.
-    Format the output to be easily parsed into an Excel sheet, with each field on a new line
-    and the field name followed by a colon and the extracted value. If a field is not found, write "N/A".
+    Extract the following information from the resume text.
+    Output each item on a new line as 'Field: Value'. Write 'N/A' if unknown.
 
     Full Name:
     Phone Number:
     Email Address:
     Current Location:
-    Total Experience (in years, if explicitly mentioned):
+    Total Experience (in years):
     Most Recent Job Title:
     Most Recent Employer:
     Highest Qualification:
-    Key Skills (list them as comma-separated values):
-    Notice Period (if mentioned):
+    Key Skills (comma-separated):
+    Notice Period:
 
     Resume Text:
     ```
@@ -137,50 +134,44 @@ def extract_info_with_gemini(resume_text, timeout=90):
         if response.parts:
             return response.parts[0].text.strip()
         else:
-            st.warning("Gemini did not return any content for this resume.")
+            st.warning("Gemini returned no content.")
             return None
     except Exception as e:
-        st.error(f"Error during Gemini API call: {e}")
+        st.error(f"Gemini API call failed: {e}")
         return None
 
 
 def save_to_firestore(user_id, applicants, excel_data):
     if not db:
-        st.warning("Firestore is not initialized.")
+        st.warning("Firestore not initialized.")
         return
 
     user_ref = db.collection("users").document(user_id)
 
     try:
-        # Store individual applicants
         for idx, applicant in enumerate(applicants):
             doc_id = f"applicant_{idx + 1}"
             user_ref.collection("applicants").document(doc_id).set(applicant)
 
-        # Store aggregate Excel file as base64 or raw text
         user_ref.set({"excel_data": excel_data}, merge=True)
-        st.success("Uploaded applicant data and Excel to Firestore.")
+        st.success("Uploaded to Firestore.")
     except Exception as e:
-        st.error(f"Error saving to Firestore: {e}")
+        st.error(f"Firestore error: {e}")
 
 
 # Streamlit UI
-st.title("Upload Data")
+st.title("Resume Parser")
 
-# Dummy login state (replace with your actual authentication)
 if "signed_in" not in st.session_state:
-    st.session_state["signed_in"] = True  # Set to True for testing
+    st.session_state["signed_in"] = True
 
-# Dummy user ID (replace with actual user identification)
 if "username" not in st.session_state:
     st.session_state["username"] = "test_user"
 
-# Ensure user is logged in
 if not st.session_state.get("signed_in"):
-    st.warning("You must be logged in to use this feature.")
+    st.warning("Please log in.")
     st.stop()
 
-# Get user ID from session
 user_id = st.session_state.username
 
 uploaded_files = st.file_uploader(
@@ -190,16 +181,17 @@ uploaded_files = st.file_uploader(
 )
 
 if uploaded_files:
-    st.info("Processing files with Gemini. Please wait...")
+    st.info("Processing resumes. Please wait...")
     rows = []
-    output_box = st.empty()  # Create an empty container for the output
-    progress_bar = st.progress(0)  # Add a progress bar
+    output_box = st.empty()
+    progress_bar = st.progress(0)
+    progress_text = st.empty()
     total_files = len(uploaded_files)
-    progress_text = st.empty() # Add a placeholder for the progress text
 
     for i, file in enumerate(uploaded_files):
         file_ext = file.name.split('.')[-1].lower()
         text = ""
+
         try:
             if file_ext == "pdf":
                 text = extract_text_from_pdf(file)
@@ -207,7 +199,7 @@ if uploaded_files:
                 text = extract_text_from_image(file)
 
             if text:
-                extracted_text = extract_info_with_gemini(text, timeout=90)
+                extracted_text = extract_info_with_gemini(text)
                 if extracted_text:
                     extracted_info = {}
                     for line in extracted_text.split('\n'):
@@ -216,30 +208,41 @@ if uploaded_files:
                             extracted_info[key.strip()] = value.strip()
                     extracted_info["Resume File"] = file.name
                     rows.append(extracted_info)
-
                 else:
-                    st.warning(f"Could not extract information from {file.name} using Gemini.")
-
+                    st.warning(f"Gemini failed on {file.name}")
             else:
-                st.warning(f"Could not extract text from {file.name}.")
-
+                st.warning(f"Could not extract text from {file.name}")
         except Exception as e:
-            st.error(f"Error processing {file.name}: {e}")
+            st.error(f"Error on {file.name}: {e}")
 
-        progress = (i + 1) / total_files  # Calculate progress
-        progress_bar.progress(progress)  # Update progress bar
-        progress_text.text(f"Processed {i + 1} of {total_files} files.")  # Update the progress text
+        progress = (i + 1) / total_files
+        progress_bar.progress(progress)
+        progress_text.text(f"Processed {i + 1} of {total_files} files.")
 
     if rows:
         df = pd.DataFrame(rows)
-        st.success(f"Processed {len(rows)} files successfully using Gemini.")
+        st.success(f"Parsed {len(rows)} resumes.")
         st.dataframe(df)
 
-        # Create Excel file in memory
-        output = io.BytesIO()
-        df.to_excel(output, index=False, sheet_name="Applicants")
-        output.seek(0)
-        excel_data = output.read()
+        # Create Excel file in memory and auto-adjust column widths
+        excel_buffer = io.BytesIO()
+        with pd.ExcelWriter(excel_buffer, engine='openpyxl') as writer:
+            df.to_excel(writer, index=False, sheet_name="Applicants")
+            worksheet = writer.book["Applicants"]
+            for column_cells in worksheet.columns:
+                max_length = 0
+                column_letter = get_column_letter(column_cells[0].column)
+                for cell in column_cells:
+                    try:
+                        if cell.value:
+                            max_length = max(max_length, len(str(cell.value)))
+                    except:
+                        pass
+                adjusted_width = max_length + 2
+                worksheet.column_dimensions[column_letter].width = adjusted_width
+
+        excel_buffer.seek(0)
+        excel_data = excel_buffer.read()
 
         st.download_button(
             label="Download Aggregated Excel",
@@ -251,4 +254,4 @@ if uploaded_files:
         if st.button("Upload to Firestore"):
             save_to_firestore(user_id, rows, excel_data)
     else:
-        st.warning("No data extracted from the uploaded files.")
+        st.warning("No data extracted.")
