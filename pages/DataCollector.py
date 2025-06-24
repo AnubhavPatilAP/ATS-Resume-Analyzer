@@ -1,9 +1,8 @@
 import streamlit as st
 import pandas as pd
-import google.generativeai as genai
+from groq import Groq
 import os
 from dotenv import load_dotenv
-import tempfile
 import pdfplumber
 from PIL import Image
 import pytesseract
@@ -12,13 +11,14 @@ from firebase_admin import credentials, firestore
 import time
 from openpyxl.utils import get_column_letter
 import io
+from requests.exceptions import HTTPError
 
 # Load environment variables
 load_dotenv()
-google_api_key = os.getenv("GOOGLE_API_KEY")
+groq_api_key = os.getenv("GROQ_API_KEY")
 
 # Initialize Firebase
-FIREBASE_JSON = "D:/Resume Analyzer/test-23ffe-cf207eed55fe.json"  # Update with your path
+FIREBASE_JSON = "D:/Resume Analyzer/test-23ffe-cf207eed55fe.json"  
 db = None
 if not firebase_admin._apps:
     try:
@@ -30,85 +30,80 @@ if not firebase_admin._apps:
 else:
     db = firestore.client()
 
-# Configure Gemini API
-model = None
-available_models = []
-if google_api_key:
+# Configure Groq API
+client = None
+if groq_api_key:
     try:
-        genai.configure(api_key=google_api_key)
-        try:
-            available_models = [m.name for m in genai.list_models()]
-            if not available_models:
-                st.error("No Gemini models found.")
-                st.stop()
-        except Exception as e_list:
-            st.error(f"Error listing models: {e_list}")
-            st.stop()
-
-        model_name_to_try = [
-            'models/gemini-1.5-flash',
-            'models/gemini-1.5-pro-latest',
-            'models/gemini-1.5-pro',
-            'models/gemini-pro-vision',
-            'models/gemini-1.0-pro-vision-latest'
-        ]
-        for model_name in model_name_to_try:
-            if model_name in available_models:
-                try:
-                    model = genai.GenerativeModel(model_name)
-                    st.info(f"Using model: {model_name}")
-                    break
-                except Exception as e:
-                    st.error(f"Error initializing model '{model_name}': {e}")
-        if not model:
-            st.error("Failed to initialize Gemini model.")
-            st.stop()
+        client = Groq(api_key=groq_api_key)
+        st.info("Groq API configured successfully.")
     except Exception as e:
-        st.error(f"Error configuring Gemini API: {e}")
+        st.error(f"Error configuring Groq API: {e}")
         st.stop()
 else:
-    st.error("GOOGLE_API_KEY not found.")
+    st.error("GROQ_API_KEY not found.")
     st.stop()
 
+# Define expected fields for the DataFrame
+EXPECTED_FIELDS = [
+    "Full Name",
+    "Gender",
+    "Phone Number",
+    "Email Address",
+    "Location",
+    "Total Experience (in years)",
+    "Most Recent Job Title",
+    "Highest Qualification",
+    "Key Skills",
+    "Resume File"
+]
 
 def extract_text_from_pdf(file):
     try:
         with pdfplumber.open(file) as pdf:
             text = ''.join([page.extract_text() or '' for page in pdf.pages])
-        return text
+        return text.strip()
     except Exception as e:
         st.error(f"Error extracting text from PDF {file.name}: {e}")
         return ""
 
-
 def extract_text_from_image(file):
     try:
         image = Image.open(file)
-        return pytesseract.image_to_string(image)
+        # Preprocess image for better OCR (optional: resize, grayscale)
+        image = image.convert("L")  # Convert to grayscale
+        text = pytesseract.image_to_string(image)
+        return text.strip()
     except Exception as e:
         st.error(f"Error extracting text from image {file.name}: {e}")
         return ""
 
-
-def extract_info_with_gemini(resume_text, timeout=90):
-    if not model:
-        st.warning("Gemini API not configured.")
+def extract_info_with_groq(resume_text, timeout=90):
+    if not client:
+        st.warning("Groq API not configured.")
         return None
 
     prompt = f"""
-    Extract the following information from the resume text.
-    Output each item on a new line as 'Field: Value'. Write 'N/A' if unknown.
-
-    Full Name:
-    Gender:(Assume gender based on name only give male or female in response no other text)
-    Phone Number:
-    Email Address:
-    Location:
-    Total Experience (in years): (use numbers only dont give any string in this field)
-    Most Recent Job Title:
-    Highest Qualification:
-    Key Skills (comma-separated):
-    dont add resume pdf field.
+    You are an expert resume parser. Extract the following information from the resume text provided below. 
+    Output each item on a new line in the format 'Field: Value'. 
+    Use 'N/A' for any field that cannot be determined. 
+    Do not include any additional fields beyond those listed. 
+    Ensure 'Gender' is either 'male' or 'female' based on name (if ambiguous, use 'N/A'). 
+    For 'Total Experience (in years)', output only a number (e.g., '5') or 'N/A' calculate using given previous job experience timeline. 
+    For 'Key Skills', provide a comma-separated list (e.g., 'Python, SQL, AWS').
+    For ATS score based on job details
+    The reply text shouldnt be any more than the below bullets 
+    - Full Name
+    - Gender
+    - Phone Number
+    - Email Address
+    - Location
+    - Total Experience (in years)
+    - Most Recent Job Title
+    - Highest Qualification
+    - Key Skills
+    - ATS Score (out of 100) 
+    example: 
+    Name: john doe
     Resume Text:
     ```
     {resume_text}
@@ -116,14 +111,72 @@ def extract_info_with_gemini(resume_text, timeout=90):
     """
 
     try:
-        generation_config = genai.types.GenerationConfig()
-        generation_config.timeout_seconds = timeout
-        response = model.generate_content(prompt, generation_config=generation_config)
-        return response.parts[0].text.strip() if response.parts else None
+        response = client.chat.completions.create(
+            model="llama3-8b-8192",  # Can switch to mixtral-8x7b-32768
+            messages=[
+                {"role": "system", "content": "You are a helpful assistant."},
+                {"role": "user", "content": prompt}
+            ],
+            max_tokens=500,
+            timeout=timeout
+        )
+        output = response.choices[0].message.content.strip()
+        # Validate output
+        lines = [line for line in output.split('\n') if ':' in line]
+        extracted_info = {}
+        for line in lines:
+            try:
+                key, value = line.split(':', 1)
+                key = key.strip()
+                value = value.strip()
+                if key in [f.strip() for f in EXPECTED_FIELDS if f != "Resume File"]:
+                    extracted_info[key] = value if value else "N/A"
+            except ValueError:
+                continue
+        # Ensure all expected fields are present
+        for field in EXPECTED_FIELDS:
+            if field != "Resume File" and field not in extracted_info:
+                extracted_info[field] = "N/A"
+        return extracted_info
+    except HTTPError as e:
+        if e.response.status_code == 429:
+            st.warning("Rate limit exceeded. Retrying after 10 seconds...")
+            time.sleep(10)
+            try:
+                response = client.chat.completions.create(
+                    model="llama3-8b-8192",
+                    messages=[
+                        {"role": "system", "content": "You are a helpful assistant."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    max_tokens=500,
+                    timeout=timeout
+                )
+                output = response.choices[0].message.content.strip()
+                lines = [line for line in output.split('\n') if ':' in line]
+                extracted_info = {}
+                for line in lines:
+                    try:
+                        key, value = line.split(':', 1)
+                        key = key.strip()
+                        value = value.strip()
+                        if key in [f.strip() for f in EXPECTED_FIELDS if f != "Resume File"]:
+                            extracted_info[key] = value if value else "N/A"
+                    except ValueError:
+                        continue
+                for field in EXPECTED_FIELDS:
+                    if field != "Resume File" and field not in extracted_info:
+                        extracted_info[field] = "N/A"
+                return extracted_info
+            except Exception as retry_e:
+                st.error(f"Groq API retry failed: {retry_e}")
+                return None
+        else:
+            st.error(f"Groq API call failed: {e}")
+            return None
     except Exception as e:
-        st.error(f"Gemini API call failed: {e}")
+        st.error(f"Groq API call failed: {e}")
         return None
-
 
 # Streamlit UI
 st.title("Resume Parser")
@@ -149,7 +202,7 @@ uploaded_files = st.file_uploader(
     accept_multiple_files=True
 )
 
-# ✅ Process resumes only once
+# Process resumes only once
 if uploaded_files and not st.session_state["processed"]:
     st.info("Processing resumes. Please wait...")
     rows = []
@@ -157,6 +210,7 @@ if uploaded_files and not st.session_state["processed"]:
     progress_bar = st.progress(0)
     progress_text = st.empty()
     total_files = len(uploaded_files)
+    failed_files = []
 
     for i, file in enumerate(uploaded_files):
         file_ext = file.name.split('.')[-1].lower()
@@ -169,31 +223,30 @@ if uploaded_files and not st.session_state["processed"]:
                 text = extract_text_from_image(file)
 
             if text:
-                extracted_text = extract_info_with_gemini(text)
-                if extracted_text:
-                    extracted_info = {}
-                    for line in extracted_text.split('\n'):
-                        if ":" in line:
-                            key, value = line.split(":", 1)
-                            extracted_info[key.strip()] = value.strip()
+                extracted_info = extract_info_with_groq(text)
+                if extracted_info:
                     extracted_info["Resume File"] = file.name
                     rows.append(extracted_info)
                 else:
-                    st.warning(f"Gemini failed on {file.name}")
+                    st.warning(f"Groq failed to extract info from {file.name}")
+                    failed_files.append(file.name)
             else:
                 st.warning(f"Could not extract text from {file.name}")
+                failed_files.append(file.name)
         except Exception as e:
-            st.error(f"Error on {file.name}: {e}")
+            st.error(f"Error processing {file.name}: {e}")
+            failed_files.append(file.name)
 
         progress = (i + 1) / total_files
         progress_bar.progress(progress)
         progress_text.text(f"Processed {i + 1} of {total_files} files.")
 
     if rows:
-        df = pd.DataFrame(rows)
+        # Create DataFrame with fixed columns
+        df = pd.DataFrame(rows, columns=EXPECTED_FIELDS)
         st.session_state.df = df
 
-        # Create Excel file in memory and auto-adjust column widths
+        # Create Excel file in memory
         excel_buffer = io.BytesIO()
         with pd.ExcelWriter(excel_buffer, engine='openpyxl') as writer:
             df.to_excel(writer, index=False, sheet_name="Applicants")
@@ -213,11 +266,13 @@ if uploaded_files and not st.session_state["processed"]:
         st.session_state.excel_data = excel_buffer.read()
         st.session_state["processed"] = True
 
-        st.success(f"Parsed {len(rows)} resumes.")
+        st.success(f"Parsed {len(rows)} resumes successfully.")
+        if failed_files:
+            st.warning(f"Failed to process {len(failed_files)} files: {', '.join(failed_files)}")
     else:
         st.warning("No data extracted.")
 
-# ✅ Show parsed data and download option if processing is complete
+# Show parsed data and download option
 if st.session_state.get("processed") and "df" in st.session_state:
     st.subheader("Parsed Resume Data")
     st.dataframe(st.session_state.df)
