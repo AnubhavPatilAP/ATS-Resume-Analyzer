@@ -10,7 +10,6 @@ import pytesseract
 import firebase_admin
 from firebase_admin import credentials, firestore
 import time
-from openpyxl import load_workbook
 from openpyxl.utils import get_column_letter
 import io
 
@@ -20,7 +19,6 @@ google_api_key = os.getenv("GOOGLE_API_KEY")
 
 # Initialize Firebase
 FIREBASE_JSON = "D:/Resume Analyzer/test-23ffe-cf207eed55fe.json"  # Update with your path
-
 db = None
 if not firebase_admin._apps:
     try:
@@ -38,7 +36,6 @@ available_models = []
 if google_api_key:
     try:
         genai.configure(api_key=google_api_key)
-
         try:
             available_models = [m.name for m in genai.list_models()]
             if not available_models:
@@ -55,22 +52,17 @@ if google_api_key:
             'models/gemini-pro-vision',
             'models/gemini-1.0-pro-vision-latest'
         ]
-
         for model_name in model_name_to_try:
             if model_name in available_models:
                 try:
                     model = genai.GenerativeModel(model_name)
-                    st.info(f"Successfully initialized model: {model_name}")
+                    st.info(f"Using model: {model_name}")
                     break
                 except Exception as e:
                     st.error(f"Error initializing model '{model_name}': {e}")
-            else:
-                st.error(f"Model '{model_name}' not found.")
-
         if not model:
             st.error("Failed to initialize Gemini model.")
             st.stop()
-
     except Exception as e:
         st.error(f"Error configuring Gemini API: {e}")
         st.stop()
@@ -82,9 +74,7 @@ else:
 def extract_text_from_pdf(file):
     try:
         with pdfplumber.open(file) as pdf:
-            text = ''
-            for page in pdf.pages:
-                text += page.extract_text() or ''
+            text = ''.join([page.extract_text() or '' for page in pdf.pages])
         return text
     except Exception as e:
         st.error(f"Error extracting text from PDF {file.name}: {e}")
@@ -94,8 +84,7 @@ def extract_text_from_pdf(file):
 def extract_text_from_image(file):
     try:
         image = Image.open(file)
-        text = pytesseract.image_to_string(image)
-        return text
+        return pytesseract.image_to_string(image)
     except Exception as e:
         st.error(f"Error extracting text from image {file.name}: {e}")
         return ""
@@ -111,16 +100,15 @@ def extract_info_with_gemini(resume_text, timeout=90):
     Output each item on a new line as 'Field: Value'. Write 'N/A' if unknown.
 
     Full Name:
+    Gender:(Assume gender based on name only give male or female in response no other text)
     Phone Number:
     Email Address:
-    Current Location:
-    Total Experience (in years):
+    Location:
+    Total Experience (in years): (use numbers only dont give any string in this field)
     Most Recent Job Title:
-    Most Recent Employer:
     Highest Qualification:
     Key Skills (comma-separated):
-    Notice Period:
-
+    dont add resume pdf field.
     Resume Text:
     ```
     {resume_text}
@@ -131,32 +119,10 @@ def extract_info_with_gemini(resume_text, timeout=90):
         generation_config = genai.types.GenerationConfig()
         generation_config.timeout_seconds = timeout
         response = model.generate_content(prompt, generation_config=generation_config)
-        if response.parts:
-            return response.parts[0].text.strip()
-        else:
-            st.warning("Gemini returned no content.")
-            return None
+        return response.parts[0].text.strip() if response.parts else None
     except Exception as e:
         st.error(f"Gemini API call failed: {e}")
         return None
-
-
-def save_to_firestore(user_id, applicants, excel_data):
-    if not db:
-        st.warning("Firestore not initialized.")
-        return
-
-    user_ref = db.collection("users").document(user_id)
-
-    try:
-        for idx, applicant in enumerate(applicants):
-            doc_id = f"applicant_{idx + 1}"
-            user_ref.collection("applicants").document(doc_id).set(applicant)
-
-        user_ref.set({"excel_data": excel_data}, merge=True)
-        st.success("Uploaded to Firestore.")
-    except Exception as e:
-        st.error(f"Firestore error: {e}")
 
 
 # Streamlit UI
@@ -172,6 +138,9 @@ if not st.session_state.get("signed_in"):
     st.warning("Please log in.")
     st.stop()
 
+if "processed" not in st.session_state:
+    st.session_state["processed"] = False
+
 user_id = st.session_state.username
 
 uploaded_files = st.file_uploader(
@@ -180,7 +149,8 @@ uploaded_files = st.file_uploader(
     accept_multiple_files=True
 )
 
-if uploaded_files:
+# ✅ Process resumes only once
+if uploaded_files and not st.session_state["processed"]:
     st.info("Processing resumes. Please wait...")
     rows = []
     output_box = st.empty()
@@ -221,8 +191,7 @@ if uploaded_files:
 
     if rows:
         df = pd.DataFrame(rows)
-        st.success(f"Parsed {len(rows)} resumes.")
-        st.dataframe(df)
+        st.session_state.df = df
 
         # Create Excel file in memory and auto-adjust column widths
         excel_buffer = io.BytesIO()
@@ -238,20 +207,29 @@ if uploaded_files:
                             max_length = max(max_length, len(str(cell.value)))
                     except:
                         pass
-                adjusted_width = max_length + 2
-                worksheet.column_dimensions[column_letter].width = adjusted_width
+                worksheet.column_dimensions[column_letter].width = max_length + 2
 
         excel_buffer.seek(0)
-        excel_data = excel_buffer.read()
+        st.session_state.excel_data = excel_buffer.read()
+        st.session_state["processed"] = True
 
-        st.download_button(
-            label="Download Aggregated Excel",
-            data=excel_data,
-            file_name="aggregated_resumes.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
-
-        if st.button("Upload to Firestore"):
-            save_to_firestore(user_id, rows, excel_data)
+        st.success(f"Parsed {len(rows)} resumes.")
     else:
         st.warning("No data extracted.")
+
+# ✅ Show parsed data and download option if processing is complete
+if st.session_state.get("processed") and "df" in st.session_state:
+    st.subheader("Parsed Resume Data")
+    st.dataframe(st.session_state.df)
+
+    st.download_button(
+        label="Download Aggregated Excel",
+        data=st.session_state.excel_data,
+        file_name="aggregated_resumes.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+
+    if st.button("Reset"):
+        st.session_state["processed"] = False
+        st.session_state.pop("df", None)
+        st.session_state.pop("excel_data", None)
