@@ -17,11 +17,11 @@ def load_data(file):
     return df
 
 def clean_data(df):
-    # Drop rows with N/A or empty strings for expected fields
+    # Remove rows where any EXPECTED_FIELDS value is N/A, n/a, empty, none, nan
     for field in EXPECTED_FIELDS:
         if field in df.columns:
-            df = df[df[field].astype(str).str.strip().str.upper() != "N/A"]
-            df = df[df[field].astype(str).str.strip() != ""]
+            df[field] = df[field].astype(str).str.strip().str.lower()
+            df = df[~df[field].isin(["", "n/a", "na", "none", "nan"])]
     return df.reset_index(drop=True)
 
 def to_excel_download(df):
@@ -31,15 +31,18 @@ def to_excel_download(df):
     output.seek(0)
     return output
 
-# Upload section
+# Sidebar upload
 st.sidebar.title("📄 Upload Resume Data")
 uploaded_file = st.sidebar.file_uploader("Upload Excel File", type=["xlsx"])
 
 if uploaded_file:
     raw_df = load_data(uploaded_file)
+    before_rows = len(raw_df)
     cleaned_df = clean_data(raw_df)
+    after_rows = len(cleaned_df)
 
     st.title("📋 Cleaned Resume Data Preview")
+    st.success(f"Cleaned data: removed {before_rows - after_rows} rows with invalid values.")
     st.dataframe(cleaned_df, use_container_width=True)
 
     # Sidebar filters
@@ -56,42 +59,39 @@ if uploaded_file:
     selected_titles = st.sidebar.multiselect("Recent Job Title", options=titles)
     min_experience = st.sidebar.slider("Minimum Experience (Years)", 0, 30, 0)
 
+    # Button to trigger filtering
     if st.sidebar.button("🔍 Apply Filters"):
         df_filtered = cleaned_df.copy()
 
         if selected_gender:
             df_filtered = df_filtered[
                 df_filtered["Gender"].astype(str).str.strip().str.lower().isin(
-                    [g.lower().strip() for g in selected_gender]
+                    [g.strip().lower() for g in selected_gender]
                 )
             ]
-
         if selected_location:
             df_filtered = df_filtered[
                 df_filtered["Location"].astype(str).str.strip().str.lower().isin(
-                    [l.lower().strip() for l in selected_location]
+                    [l.strip().lower() for l in selected_location]
                 )
             ]
-
         if selected_qualification:
             df_filtered = df_filtered[
                 df_filtered["Highest Qualification"].astype(str).str.strip().str.lower().isin(
-                    [q.lower().strip() for q in selected_qualification]
+                    [q.strip().lower() for q in selected_qualification]
                 )
             ]
-
         if selected_titles:
             df_filtered = df_filtered[
                 df_filtered["Most Recent Job Title"].astype(str).str.strip().str.lower().isin(
-                    [t.lower().strip() for t in selected_titles]
+                    [t.strip().lower() for t in selected_titles]
                 )
             ]
-
         if "Total Experience" in df_filtered.columns:
             df_filtered["Total Experience"] = pd.to_numeric(df_filtered["Total Experience"], errors="coerce")
             df_filtered = df_filtered[df_filtered["Total Experience"] >= min_experience]
 
-        # Filtered data
+        # Dashboard
         st.markdown("## 📊 Filtered Candidate Dashboard")
 
         if df_filtered.empty:
@@ -101,7 +101,6 @@ if uploaded_file:
         st.metric("Total Candidates", len(df_filtered))
         st.metric("Average Experience", round(df_filtered["Total Experience"].mean(), 2))
 
-        # Charts
         exp_chart = px.histogram(df_filtered, x="Total Experience", nbins=10, title="Experience Distribution")
         st.plotly_chart(exp_chart, use_container_width=True)
 
@@ -120,7 +119,6 @@ if uploaded_file:
                 )
                 st.plotly_chart(skill_chart, use_container_width=True)
 
-        # Final table and download
         st.markdown("### 🧾 Matched Candidate Table")
         st.dataframe(df_filtered.reset_index(drop=True), use_container_width=True)
 
@@ -134,7 +132,7 @@ if uploaded_file:
 else:
     st.info("Upload a parsed resume Excel file to begin.")
 
-# Hide Streamlit UI branding
+# Hide Streamlit branding
 st.markdown("""
 <style>
 #MainMenu {visibility: hidden;}
