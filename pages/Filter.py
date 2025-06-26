@@ -2,8 +2,13 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import io
-
+from manager import NavigationManager, require_login, apply_sidebar_style, set_background_css
 st.set_page_config(page_title="Resume Filter", page_icon="🧠", layout="wide")
+
+# Apply styling
+apply_sidebar_style()
+set_background_css()
+require_login()
 
 EXPECTED_FIELDS = [
     "Full Name", "Gender", "Phone Number", "Email Address", "Location",
@@ -17,7 +22,6 @@ def load_data(file):
     return df
 
 def clean_data(df):
-    # Remove rows where any EXPECTED_FIELDS value is N/A, n/a, empty, none, nan
     for field in EXPECTED_FIELDS:
         if field in df.columns:
             df[field] = df[field].astype(str).str.strip().str.lower()
@@ -53,13 +57,17 @@ if uploaded_file:
     qualifications = sorted(set(cleaned_df["Highest Qualification"].dropna().astype(str).str.strip().str.title()))
     titles = sorted(set(cleaned_df["Most Recent Job Title"].dropna().astype(str).str.strip().str.title()))
 
+    # Extract skills from comma-separated "Key Skills"
+    skill_series = cleaned_df["Key Skills"].dropna().str.split(",").explode().str.strip().str.lower()
+    skill_options = sorted(set(skill_series))
+
     selected_gender = st.sidebar.multiselect("Gender", options=genders)
     selected_location = st.sidebar.multiselect("Location", options=locations)
     selected_qualification = st.sidebar.multiselect("Highest Qualification", options=qualifications)
     selected_titles = st.sidebar.multiselect("Recent Job Title", options=titles)
+    selected_skills = st.sidebar.multiselect("Skills", options=skill_options)
     min_experience = st.sidebar.slider("Minimum Experience (Years)", 0, 30, 0)
 
-    # Button to trigger filtering
     if st.sidebar.button("🔍 Apply Filters"):
         df_filtered = cleaned_df.copy()
 
@@ -87,6 +95,12 @@ if uploaded_file:
                     [t.strip().lower() for t in selected_titles]
                 )
             ]
+        if selected_skills:
+            df_filtered = df_filtered[
+                df_filtered["Key Skills"].apply(
+                    lambda ks: any(skill in ks for skill in selected_skills)
+                )
+            ]
         if "Total Experience" in df_filtered.columns:
             df_filtered["Total Experience"] = pd.to_numeric(df_filtered["Total Experience"], errors="coerce")
             df_filtered = df_filtered[df_filtered["Total Experience"] >= min_experience]
@@ -104,6 +118,7 @@ if uploaded_file:
         exp_chart = px.histogram(df_filtered, x="Total Experience", nbins=10, title="Experience Distribution")
         st.plotly_chart(exp_chart, use_container_width=True)
 
+        # Top skills bar chart
         if "Key Skills" in df_filtered.columns:
             skill_series = df_filtered["Key Skills"].dropna().str.split(",").explode().str.strip().str.lower()
             top_skills = skill_series.value_counts().head(10)

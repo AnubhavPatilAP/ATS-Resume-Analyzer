@@ -2,11 +2,15 @@ import streamlit as st
 import firebase_admin
 from firebase_admin import credentials, auth
 import requests
-from manager import NavigationManager  
-from manager import apply_sidebar_style  
+from manager import NavigationManager, require_login, apply_sidebar_style, set_background_css
+ 
 
-# Apply sidebar styling
+
+# Apply styling
 apply_sidebar_style()
+set_background_css()
+
+
 
 # Navigator
 nav_manager = NavigationManager()

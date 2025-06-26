@@ -12,6 +12,13 @@ import time
 from openpyxl.utils import get_column_letter
 import io
 from requests.exceptions import HTTPError
+from manager import NavigationManager, require_login, apply_sidebar_style, set_background_css
+
+
+# Apply styling
+apply_sidebar_style()
+set_background_css()
+require_login()
 
 # Load environment variables
 load_dotenv()
@@ -54,7 +61,7 @@ EXPECTED_FIELDS = [
     "Most Recent Job Title",
     "Highest Qualification",
     "Key Skills",
-    "Resume File"
+    "ATS Score"
 ]
 
 def extract_text_from_pdf(file):
@@ -83,15 +90,15 @@ def extract_info_with_groq(resume_text, timeout=90):
         return None
 
     prompt = f"""
-    You are an expert resume parser. Extract the following information from the resume text provided below. 
+    Extract the following information from the resume text provided below. 
     Output each item on a new line in the format 'Field: Value'. 
     Use 'N/A' for any field that cannot be determined. 
-    Do not include any additional fields beyond those listed. 
-    Ensure 'Gender' is either 'male' or 'female' based on name (if ambiguous, use 'N/A'). 
-    For 'Total Experience (in years)', output only a number (e.g., '5') or 'N/A' calculate using given previous job experience timeline. 
+    Do not include any additional fields beyond those listed now any text other than field and value. 
+    Ensure 'Gender' is either 'male' or 'female' based on name. 
+    For 'Total Experience (in years)', output only a number (e.g., '5') or 0, calculate using given previous job experience timeline. 
     For 'Key Skills', provide a comma-separated list (e.g., 'Python, SQL, AWS').
-    For ATS score based on job details
-    The reply text shouldnt be any more than the below bullets 
+    For ATS score based on job details. Score out of 100.
+    Fields to extract are given below
     - Full Name
     - Gender
     - Phone Number
@@ -101,9 +108,11 @@ def extract_info_with_groq(resume_text, timeout=90):
     - Most Recent Job Title
     - Highest Qualification
     - Key Skills
-    - ATS Score (out of 100) 
+    - ATS Score 
     example: 
     Name: john doe
+    gender: Male
+    etc.
     Resume Text:
     ```
     {resume_text}

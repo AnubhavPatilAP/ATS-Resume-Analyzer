@@ -1,4 +1,13 @@
 import streamlit as st
+from manager import NavigationManager, require_login, apply_sidebar_style, set_background_css
+
+
+
+# Apply styling
+apply_sidebar_style()
+set_background_css()
+require_login()
+
 
 st.title("🎯 Resume Shortlisting Criteria")
 

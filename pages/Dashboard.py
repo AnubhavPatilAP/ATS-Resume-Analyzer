@@ -4,9 +4,23 @@ import plotly.express as px
 import plotly.graph_objects as go
 from wordcloud import WordCloud
 import matplotlib.pyplot as plt
-
+from manager import NavigationManager, require_login, apply_sidebar_style, set_background_css
+ 
+ 
 # Page setup
 st.set_page_config(page_title="Resume Insights Dashboard", page_icon=":bar_chart:", layout="wide")
+
+
+# Apply styling
+apply_sidebar_style()
+set_background_css()
+require_login()
+
+
+# Navigator
+nav_manager = NavigationManager()
+nav_manager.top_nav()
+
 
 st.title("Resume Insights Dashboard")
 st.markdown("_Powered by Gemini & Streamlit_")
