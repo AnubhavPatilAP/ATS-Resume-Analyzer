@@ -1,9 +1,11 @@
 # Home.py
 
 import streamlit as st
+from manager import NavigationManager, apply_sidebar_style, set_background_css
+
 st.set_page_config(page_title="Homepage", page_icon="🏡")  # MUST BE FIRST
 
-from manager import NavigationManager, apply_sidebar_style, set_background_css
+
 
 # Apply CSS background
 set_background_css()

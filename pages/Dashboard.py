@@ -12,8 +12,8 @@ st.set_page_config(page_title="Resume Insights Dashboard", page_icon=":bar_chart
 
 
 # Apply styling
-apply_sidebar_style()
 set_background_css()
+apply_sidebar_style()
 require_login()
 
 

@@ -93,23 +93,30 @@ def set_background_css():
         background-position: center;
     }
 
+    /* Remove bottom white gap */
     .block-container {
         position: relative;
         z-index: 1;
-        padding-bottom: 2rem !important;
+        padding-bottom: 0 !important;
+        margin-bottom: 0 !important;
+        min-height: 100vh !important;
     }
 
-    /* 🔥 Completely hide Streamlit footer */
+    main > div:has(.block-container) {
+        padding-bottom: 0 !important;
+    }
+
+    .block-container > div:last-child {
+        margin-bottom: 0 !important;
+        padding-bottom: 0 !important;
+    }
+
     footer, footer:before, .st-emotion-cache-1avcm0n, .st-emotion-cache-q8sbsg {
         display: none;
         visibility: hidden;
         padding: 0;
-        height: 0 ;
+        height: 0;
         margin: 0;
-    }
-
-    main > div:has(.block-container) {
-        padding-bottom: 2rem !important;
     }
 
     textarea, input[type="text"], .stTextInput input, .stTextArea textarea {
@@ -144,4 +151,3 @@ def set_background_css():
     }
     </style>
     """, unsafe_allow_html=True)
-
