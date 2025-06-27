@@ -36,7 +36,7 @@ def to_excel_download(df):
     return output
 
 # Sidebar upload
-st.sidebar.title("📄 Upload Resume Data")
+st.sidebar.title("Upload Resume Data")
 uploaded_file = st.sidebar.file_uploader("Upload Excel File", type=["xlsx"])
 
 if uploaded_file:
@@ -45,7 +45,7 @@ if uploaded_file:
     cleaned_df = clean_data(raw_df)
     after_rows = len(cleaned_df)
 
-    st.title("📋 Cleaned Resume Data Preview")
+    st.title("Cleaned Resume Data Preview")
     st.success(f"Cleaned data: removed {before_rows - after_rows} rows with invalid values.")
     st.dataframe(cleaned_df, use_container_width=True)
 
@@ -68,7 +68,7 @@ if uploaded_file:
     selected_skills = st.sidebar.multiselect("Skills", options=skill_options)
     min_experience = st.sidebar.slider("Minimum Experience (Years)", 0, 30, 0)
 
-    if st.sidebar.button("🔍 Apply Filters"):
+    if st.sidebar.button("Apply Filters"):
         df_filtered = cleaned_df.copy()
 
         if selected_gender:
@@ -106,7 +106,7 @@ if uploaded_file:
             df_filtered = df_filtered[df_filtered["Total Experience"] >= min_experience]
 
         # Dashboard
-        st.markdown("## 📊 Filtered Candidate Dashboard")
+        st.markdown("## Filtered Candidate Dashboard")
 
         if df_filtered.empty:
             st.warning("No candidates match the current filters.")
@@ -134,11 +134,11 @@ if uploaded_file:
                 )
                 st.plotly_chart(skill_chart, use_container_width=True)
 
-        st.markdown("### 🧾 Matched Candidate Table")
+        st.markdown("### Matched Candidate Table")
         st.dataframe(df_filtered.reset_index(drop=True), use_container_width=True)
 
         st.download_button(
-            label="📥 Download Filtered Data as Excel",
+            label="Download Filtered Data as Excel",
             data=to_excel_download(df_filtered),
             file_name="filtered_candidates.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"

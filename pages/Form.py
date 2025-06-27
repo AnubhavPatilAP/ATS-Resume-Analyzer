@@ -9,35 +9,35 @@ set_background_css()
 require_login()
 
 
-st.title("🎯 Resume Shortlisting Criteria")
+st.title("Resume Shortlisting Criteria")
 
 with st.form("shortlisting_form"):
-    st.subheader("📌 Basic Job Criteria")
+    st.subheader("Basic Job Criteria")
     role = st.text_input("Job Title / Role", placeholder="e.g. Backend Developer")
     must_have_skills = st.text_area("Must-Have Skills", placeholder="Comma-separated, e.g. Python, Django, PostgreSQL")
     nice_to_have_skills = st.text_area("Nice-to-Have Skills", placeholder="Optional, e.g. AWS, Docker")
 
-    st.subheader("📈 Experience")
+    st.subheader("Experience")
     min_experience = st.slider("Minimum Required Years of Experience", 0, 20, 2)
 
-    st.subheader("🎓 Education")
+    st.subheader("Education")
     education_level = st.selectbox("Minimum Education Level", ["Any", "Bachelor's", "Master's", "PhD"])
 
-    st.subheader("📜 Certifications")
+    st.subheader("Certifications")
     required_certs = st.text_area("Required Certifications", placeholder="Optional, e.g. AWS Certified Developer")
 
-    st.subheader("📍 Location")
+    st.subheader("Location")
     preferred_locations = st.text_area("Preferred Locations", placeholder="e.g. Bangalore, Remote")
     remote_allowed = st.checkbox("Remote Work Allowed", value=True)
 
-    st.subheader("⚠️ Red Flags to Avoid")
+    st.subheader("Red Flags to Avoid")
     red_flags = st.text_area("e.g. Frequent job changes, long employment gaps")
 
-    st.subheader("⚙️ Shortlisting Logic")
+    st.subheader("Shortlisting Logic")
     strict_filter = st.checkbox("Disqualify if must-have skills are missing", value=True)
     weightage = st.select_slider("Scoring Preference", options=["Skills", "Balanced", "Experience"], value="Balanced")
 
-    submitted = st.form_submit_button("✅ Submit Criteria")
+    submitted = st.form_submit_button("Submit Criteria")
 
 if submitted:
     criteria = {
