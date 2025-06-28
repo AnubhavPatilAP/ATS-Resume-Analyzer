@@ -8,120 +8,92 @@ from PIL import Image
 import pytesseract
 import firebase_admin
 from firebase_admin import credentials, firestore
-import time
 from openpyxl.utils import get_column_letter
 import io
-from requests.exceptions import HTTPError
-from manager import NavigationManager, require_login, apply_sidebar_style, set_background_css
+from manager import require_login, apply_sidebar_style, set_background_css
 
-
-# Apply styling
+# --- Styling & Auth ---
 apply_sidebar_style()
 set_background_css()
 require_login()
 
-# Load environment variables
+# --- Load Environment Variables ---
 load_dotenv()
 groq_api_key = os.getenv("GROQ_API_KEY")
+client = Groq(api_key=groq_api_key)
 
-# Initialize Firebase
-FIREBASE_JSON = "D:/Resume Analyzer/test-23ffe-cf207eed55fe.json"  
-db = None
+# --- Firebase Init ---
+FIREBASE_JSON = "D:/Resume Analyzer/test-23ffe-cf207eed55fe.json"
 if not firebase_admin._apps:
-    try:
-        cred = credentials.Certificate(FIREBASE_JSON)
-        firebase_admin.initialize_app(cred)
-        db = firestore.client()
-    except Exception as e:
-        st.error(f"Error initializing Firebase: {e}")
-else:
-    db = firestore.client()
+    cred = credentials.Certificate(FIREBASE_JSON)
+    firebase_admin.initialize_app(cred)
+db = firestore.client()
 
-# Configure Groq API
-client = None
-if groq_api_key:
-    try:
-        client = Groq(api_key=groq_api_key)
-        st.info("Groq API configured successfully.")
-    except Exception as e:
-        st.error(f"Error configuring Groq API: {e}")
-        st.stop()
-else:
-    st.error("GROQ_API_KEY not found.")
-    st.stop()
-
-# Define expected fields for the DataFrame
+# --- Fields to Extract ---
 EXPECTED_FIELDS = [
-    "Full Name",
-    "Gender",
-    "Phone Number",
-    "Email Address",
-    "Location",
-    "Total Experience (in years)",
-    "Most Recent Job Title",
-    "Highest Qualification",
-    "Key Skills",
-    "ATS Score"
+    "Full Name", "Gender", "Phone Number", "Email Address", "Location",
+    "Total Experience (in years)", "Most Recent Job Title", "Highest Qualification",
+    "Key Skills", "ATS Score"
 ]
 
+# --- Helper Functions ---
 def extract_text_from_pdf(file):
     try:
         with pdfplumber.open(file) as pdf:
-            text = ''.join([page.extract_text() or '' for page in pdf.pages])
-        return text.strip()
+            return ''.join(page.extract_text() or '' for page in pdf.pages).strip()
     except Exception as e:
-        st.error(f"Error extracting text from PDF {file.name}: {e}")
+        st.error(f"PDF Error ({file.name}): {e}")
         return ""
 
 def extract_text_from_image(file):
     try:
-        image = Image.open(file)
-        # Preprocess image for better OCR (optional: resize, grayscale)
-        image = image.convert("L")  # Convert to grayscale
-        text = pytesseract.image_to_string(image)
-        return text.strip()
+        image = Image.open(file).convert("L")
+        return pytesseract.image_to_string(image).strip()
     except Exception as e:
-        st.error(f"Error extracting text from image {file.name}: {e}")
+        st.error(f"Image Error ({file.name}): {e}")
         return ""
 
 def extract_info_with_groq(resume_text, timeout=90):
     if not client:
-        st.warning("Groq API not configured.")
         return None
 
     prompt = f"""
-    Extract the following information from the resume text provided below. 
-    Output each item on a new line in the format 'Field: Value'. 
-    Use 'N/A' for any field that cannot be determined. 
-    Do not include any additional fields beyond those listed now any text other than field and value. 
-    Ensure 'Gender' is either 'male' or 'female' based on name. 
-    For 'Total Experience (in years)', output only a number (e.g., '5') or 0, calculate using given previous job experience timeline. 
-    For 'Key Skills', provide a comma-separated list (e.g., 'Python, SQL, AWS').
-    For ATS score based on job details. Score out of 100.
-    Fields to extract are given below
-    - Full Name
-    - Gender
-    - Phone Number
-    - Email Address
-    - Location
-    - Total Experience (in years)
-    - Most Recent Job Title
-    - Highest Qualification
-    - Key Skills
-    - ATS Score 
-    example: 
-    Name: john doe
-    gender: Male
-    etc.
-    Resume Text:
-    ```
-    {resume_text}
-    ```
-    """
-
+Extract the following information from the resume text provided below. 
+Return each field exactly in this format: Field: Value. 
+Use 'N/A' if any field is missing.
+the resume text may be in random order look for information properly.
+the following data is to be passed to a parser to be automatically input into an excel, make sure that integrity is maintained by no excess text in the output.
+the response should be'
+Full Name:
+Gender:
+Phone Number:
+Email Address:
+Location:
+Total Experience:
+Most Recent Job Title:
+Highest Qualification:
+Skills:
+ATS Score:
+' only these fields should be filled in response,
+Assume gender based on name if not mentioned,
+calculate total experience other wise put 0 by default only give number of years no other text,
+calculate ats score based on if cannot calculate then assume
+    Job Criteria:
+    Role: {job_criteria.get('role', '')}
+    Job Description: {job_criteria.get('job_description', '')}
+    Must-Have Skills: {', '.join(job_criteria.get('must_have_skills', []))}
+    Min Experience: {job_criteria.get('min_experience', '')}
+example:
+Full Name:john doe
+Gender: Male
+Total Experience: 0
+ATS Score: 75
+Resume Text:
+```{resume_text}```
+"""
     try:
         response = client.chat.completions.create(
-            model="llama3-8b-8192",  # Can switch to mixtral-8x7b-32768
+            model="llama3-8b-8192",
             messages=[
                 {"role": "system", "content": "You are a helpful assistant."},
                 {"role": "user", "content": prompt}
@@ -130,170 +102,119 @@ def extract_info_with_groq(resume_text, timeout=90):
             timeout=timeout
         )
         output = response.choices[0].message.content.strip()
-        # Validate output
-        lines = [line for line in output.split('\n') if ':' in line]
-        extracted_info = {}
-        for line in lines:
-            try:
-                key, value = line.split(':', 1)
-                key = key.strip()
-                value = value.strip()
-                if key in [f.strip() for f in EXPECTED_FIELDS if f != "Resume File"]:
-                    extracted_info[key] = value if value else "N/A"
-            except ValueError:
-                continue
-        # Ensure all expected fields are present
+
+        extracted = {}
+        for line in output.split('\n'):
+            if ':' in line:
+                key, value = map(str.strip, line.split(':', 1))
+                for expected in EXPECTED_FIELDS:
+                    if key.lower() in expected.lower():
+                        extracted[expected] = value or "N/A"
+                        break
         for field in EXPECTED_FIELDS:
-            if field != "Resume File" and field not in extracted_info:
-                extracted_info[field] = "N/A"
-        return extracted_info
-    except HTTPError as e:
-        if e.response.status_code == 429:
-            st.warning("Rate limit exceeded. Retrying after 10 seconds...")
-            time.sleep(10)
-            try:
-                response = client.chat.completions.create(
-                    model="llama3-8b-8192",
-                    messages=[
-                        {"role": "system", "content": "You are a helpful assistant."},
-                        {"role": "user", "content": prompt}
-                    ],
-                    max_tokens=500,
-                    timeout=timeout
-                )
-                output = response.choices[0].message.content.strip()
-                lines = [line for line in output.split('\n') if ':' in line]
-                extracted_info = {}
-                for line in lines:
-                    try:
-                        key, value = line.split(':', 1)
-                        key = key.strip()
-                        value = value.strip()
-                        if key in [f.strip() for f in EXPECTED_FIELDS if f != "Resume File"]:
-                            extracted_info[key] = value if value else "N/A"
-                    except ValueError:
-                        continue
-                for field in EXPECTED_FIELDS:
-                    if field != "Resume File" and field not in extracted_info:
-                        extracted_info[field] = "N/A"
-                return extracted_info
-            except Exception as retry_e:
-                st.error(f"Groq API retry failed: {retry_e}")
-                return None
-        else:
-            st.error(f"Groq API call failed: {e}")
-            return None
+            extracted.setdefault(field, "N/A")
+        return extracted
+
     except Exception as e:
-        st.error(f"Groq API call failed: {e}")
+        st.error(f"Groq error: {e}")
         return None
 
-# Streamlit UI
+# --- Page Title ---
 st.title("Resume Parser")
 
-if "signed_in" not in st.session_state:
-    st.session_state["signed_in"] = True
+# --- Get Job Criteria from Session ---
+job_criteria = st.session_state.get("prefill_criteria") or st.session_state.get("selected_job_criteria")
 
-if "username" not in st.session_state:
-    st.session_state["username"] = "test_user"
-
-if not st.session_state.get("signed_in"):
-    st.warning("Please log in.")
+if not job_criteria:
+    st.warning("⚠️ Job criteria not found. Please fill the form or select from your history.")
     st.stop()
+# --- Optional Excel Upload ---
+with st.expander("📂 Already have parsed data? Upload Excel"):
+    excel_file = st.file_uploader("Upload Excel", type=["xlsx"])
+    if excel_file:
+        try:
+            df = pd.read_excel(excel_file)
+            missing = [col for col in EXPECTED_FIELDS if col not in df.columns]
+            if missing:
+                st.error(f"Missing columns: {', '.join(missing)}")
+            else:
+                st.session_state.df = df
+                st.session_state.processed = True
+                buffer = io.BytesIO()
+                with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
+                    df.to_excel(writer, index=False, sheet_name="Applicants")
+                    sheet = writer.book["Applicants"]
+                    for col in sheet.columns:
+                        max_len = max(len(str(cell.value)) if cell.value else 0 for cell in col)
+                        sheet.column_dimensions[get_column_letter(col[0].column)].width = max_len + 2
+                buffer.seek(0)
+                st.session_state.excel_data = buffer.read()
+                st.success("Excel uploaded successfully.")
+                if st.button("Analyze Uploaded Excel"):
+                    st.switch_page("pages/Dashboard.py")
+        except Exception as e:
+            st.error(f"Excel error: {e}")
+
+# --- Upload Resumes ---
+st.markdown("### 📄 Upload Resume Files")
+files = st.file_uploader("Upload PDFs or Images", type=["pdf", "png", "jpg", "jpeg"], accept_multiple_files=True)
 
 if "processed" not in st.session_state:
     st.session_state["processed"] = False
 
-user_id = st.session_state.username
+if files and not st.session_state["processed"]:
+    st.info("Processing resumes...")
 
-uploaded_files = st.file_uploader(
-    "Upload Resume Files (PDFs or Images)",
-    type=["pdf", "png", "jpg", "jpeg"],
-    accept_multiple_files=True
-)
-
-# Process resumes only once
-if uploaded_files and not st.session_state["processed"]:
-    st.info("Processing resumes. Please wait...")
-    rows = []
-    output_box = st.empty()
+    rows, failed = [], []
     progress_bar = st.progress(0)
-    progress_text = st.empty()
-    total_files = len(uploaded_files)
-    failed_files = []
+    status = st.empty()
 
-    for i, file in enumerate(uploaded_files):
-        file_ext = file.name.split('.')[-1].lower()
-        text = ""
+    for i, f in enumerate(files):
+        ext = f.name.lower().split('.')[-1]
+        text = extract_text_from_pdf(f) if ext == "pdf" else extract_text_from_image(f)
 
-        try:
-            if file_ext == "pdf":
-                text = extract_text_from_pdf(file)
-            elif file_ext in ["png", "jpg", "jpeg"]:
-                text = extract_text_from_image(file)
-
-            if text:
-                extracted_info = extract_info_with_groq(text)
-                if extracted_info:
-                    extracted_info["Resume File"] = file.name
-                    rows.append(extracted_info)
-                else:
-                    st.warning(f"Groq failed to extract info from {file.name}")
-                    failed_files.append(file.name)
+        if text:
+            info = extract_info_with_groq(text)
+            if info:
+                info["Resume File"] = f.name
+                rows.append(info)
             else:
-                st.warning(f"Could not extract text from {file.name}")
-                failed_files.append(file.name)
-        except Exception as e:
-            st.error(f"Error processing {file.name}: {e}")
-            failed_files.append(file.name)
+                failed.append(f.name)
+        else:
+            failed.append(f.name)
 
-        progress = (i + 1) / total_files
-        progress_bar.progress(progress)
-        progress_text.text(f"Processed {i + 1} of {total_files} files.")
+        progress_bar.progress((i + 1) / len(files))
+        status.text(f"Processed {i + 1}/{len(files)}")
 
     if rows:
-        # Create DataFrame with fixed columns
         df = pd.DataFrame(rows, columns=EXPECTED_FIELDS)
         st.session_state.df = df
 
-        # Create Excel file in memory
+        # Save to Excel
         excel_buffer = io.BytesIO()
         with pd.ExcelWriter(excel_buffer, engine='openpyxl') as writer:
             df.to_excel(writer, index=False, sheet_name="Applicants")
             worksheet = writer.book["Applicants"]
             for column_cells in worksheet.columns:
-                max_length = 0
-                column_letter = get_column_letter(column_cells[0].column)
-                for cell in column_cells:
-                    try:
-                        if cell.value:
-                            max_length = max(max_length, len(str(cell.value)))
-                    except:
-                        pass
-                worksheet.column_dimensions[column_letter].width = max_length + 2
-
+                max_length = max((len(str(cell.value)) for cell in column_cells if cell.value), default=0)
+                worksheet.column_dimensions[get_column_letter(column_cells[0].column)].width = max_length + 2
         excel_buffer.seek(0)
         st.session_state.excel_data = excel_buffer.read()
         st.session_state["processed"] = True
 
-        st.success(f"Parsed {len(rows)} resumes successfully.")
-        if failed_files:
-            st.warning(f"Failed to process {len(failed_files)} files: {', '.join(failed_files)}")
+        st.success(f"✅ Parsed {len(rows)} resumes successfully.")
+        if failed:
+            st.warning(f"⚠️ Failed to process: {', '.join(failed)}")
     else:
-        st.warning("No data extracted.")
+        st.warning("No valid data extracted.")
 
-# Show parsed data and download option
+# --- Display Results ---
 if st.session_state.get("processed") and "df" in st.session_state:
-    st.subheader("Parsed Resume Data")
+    st.subheader("📊 Parsed Resume Data")
     st.dataframe(st.session_state.df)
 
-    st.download_button(
-        label="Download Aggregated Excel",
-        data=st.session_state.excel_data,
-        file_name="aggregated_resumes.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    )
+    st.download_button("📥 Download Excel", st.session_state.excel_data, "aggregated_resumes.xlsx")
 
-    if st.button("Reset"):
-        st.session_state["processed"] = False
-        st.session_state.pop("df", None)
-        st.session_state.pop("excel_data", None)
+    if st.button("🔄 Reset"):
+        for k in ["processed", "df", "excel_data"]:
+            st.session_state.pop(k, None)

@@ -97,8 +97,8 @@ def set_background_css():
     .block-container {
         position: relative;
         z-index: 1;
-        padding-bottom: 0 !important;
-        margin-bottom: 0 !important;
+        padding-bottom: 0px ;
+        margin-bottom: 150px !important;
         min-height: 100vh !important;
     }
 
