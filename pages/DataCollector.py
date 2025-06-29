@@ -33,7 +33,7 @@ db = firestore.client()
 EXPECTED_FIELDS = [
     "Full Name", "Gender", "Phone Number", "Email Address", "Location",
     "Total Experience (in years)", "Most Recent Job Title", "Highest Qualification",
-    "Key Skills", "ATS Score"
+    "Key Skills", "ATS Score", "Remark"
 ]
 
 # --- Helper Functions ---
@@ -60,8 +60,7 @@ def extract_info_with_groq(resume_text, timeout=90):
     prompt = f"""
 Extract the following information from the resume text provided below. 
 Return each field exactly in this format: Field: Value. 
-Use 'N/A' if any field is missing.
-the resume text may be in random order look for information properly.
+the resume text is extracted from a pdf and may be in random order, every information is provided.
 the following data is to be passed to a parser to be automatically input into an excel, make sure that integrity is maintained by no excess text in the output.
 the response should be'
 Full Name:
@@ -74,20 +73,33 @@ Most Recent Job Title:
 Highest Qualification:
 Skills:
 ATS Score:
-' only these fields should be filled in response,
+'only these fields should be filled in response,
 Assume gender based on name if not mentioned,
 calculate total experience other wise put 0 by default only give number of years no other text,
-calculate ats score based on if cannot calculate then assume
+calculate ats score based on 
     Job Criteria:
     Role: {job_criteria.get('role', '')}
     Job Description: {job_criteria.get('job_description', '')}
     Must-Have Skills: {', '.join(job_criteria.get('must_have_skills', []))}
     Min Experience: {job_criteria.get('min_experience', '')}
+    ATS score is based on how well the resume match the criteria.
+    if any of the data is assumed dont mention it nor write anything in '()'
 example:
-Full Name:john doe
+'
+Full Name: john doe
 Gender: Male
-Total Experience: 0
-ATS Score: 75
+Phone Number: 9856428597
+Email Address: johndoe@mail.com
+Location: New York
+Total Experience: 8
+Most Recent Job Title: Data Scientist
+Highest Qualification: Batchlor in Computer Science
+Skills: Apache, DBMS, Collab, Python
+ATS Score: 90
+Remark:
+'
+In the Remark section add explaination whioch was omitted in other fields, 
+make sure to not give remark about the field in the field inself.
 Resume Text:
 ```{resume_text}```
 """
