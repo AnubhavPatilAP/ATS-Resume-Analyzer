@@ -98,7 +98,7 @@ def set_background_css():
         position: relative;
         z-index: 1;
         padding-bottom: 0px ;
-        margin-bottom: 150px !important;
+        margin-bottom: 300px !important;
         min-height: 100vh !important;
     }
 

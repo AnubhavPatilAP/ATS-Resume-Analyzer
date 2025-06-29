@@ -140,18 +140,29 @@ job_criteria = st.session_state.get("prefill_criteria") or st.session_state.get(
 if not job_criteria:
     st.warning("⚠️ Job criteria not found. Please fill the form or select from your history.")
     st.stop()
+    
+    
 # --- Optional Excel Upload ---
 with st.expander("📂 Already have parsed data? Upload Excel"):
     excel_file = st.file_uploader("Upload Excel", type=["xlsx"])
+    
     if excel_file:
         try:
             df = pd.read_excel(excel_file)
             missing = [col for col in EXPECTED_FIELDS if col not in df.columns]
+            
             if missing:
                 st.error(f"Missing columns: {', '.join(missing)}")
             else:
+                # Clear parsed resume data to keep only one source
+                for k in ["analysis_source", "df", "excel_data"]:
+                    st.session_state.pop(k, None)
+
+                # Save new dataframe to session
                 st.session_state.df = df
                 st.session_state.processed = True
+
+                # Save formatted Excel to buffer
                 buffer = io.BytesIO()
                 with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
                     df.to_excel(writer, index=False, sheet_name="Applicants")
@@ -161,11 +172,17 @@ with st.expander("📂 Already have parsed data? Upload Excel"):
                         sheet.column_dimensions[get_column_letter(col[0].column)].width = max_len + 2
                 buffer.seek(0)
                 st.session_state.excel_data = buffer.read()
-                st.success("Excel uploaded successfully.")
-                if st.button("Analyze Uploaded Excel"):
-                    st.switch_page("pages/Dashboard.py")
+
+                st.success("✅ Excel uploaded and validated.")
+        
         except Exception as e:
-            st.error(f"Excel error: {e}")
+            st.error(f"❌ Excel error: {e}")
+
+    # Show Analyze button only if Excel is uploaded and valid
+    if "df" in st.session_state and st.session_state.get("processed"):
+        if st.button("📊 Analyze Uploaded Excel"):
+            st.session_state.analysis_source = "uploaded_excel"
+            st.switch_page("pages/Dashboard.py")
 
 # --- Upload Resumes ---
 st.markdown("### 📄 Upload Resume Files")
@@ -227,6 +244,17 @@ if st.session_state.get("processed") and "df" in st.session_state:
 
     st.download_button("📥 Download Excel", st.session_state.excel_data, "aggregated_resumes.xlsx")
 
+    # Analyze Parsed Resumes
+    if st.button("📊 Analyze Parsed Resumes"):
+        # Ensure only parsed resume data is carried forward
+        for key in ["analysis_source"]:
+            st.session_state.pop(key, None)
+
+        st.session_state.analysis_source = "parsed_resumes"
+        st.switch_page("pages/Dashboard.py")
+
+    # Reset all session state related to resume parsing
     if st.button("🔄 Reset"):
-        for k in ["processed", "df", "excel_data"]:
+        for k in ["processed", "df", "excel_data", "analysis_source"]:
             st.session_state.pop(k, None)
+
