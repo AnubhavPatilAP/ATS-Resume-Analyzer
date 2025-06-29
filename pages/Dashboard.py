@@ -249,24 +249,13 @@ else:
 # --- Spacing before footer action ---
 st.markdown("###")  # Adds vertical space
 
+# --- Save cleaned_df for manual filter page ---
+st.session_state["cleaned_for_filter"] = cleaned_df
+
 # --- Manual Filter Button ---
-st.markdown(
-    """
-    <div style="text-align: center; padding: 30px 0;">
-        <a href="#" style="
-            background-color: #5a189a;
-            color: white;
-            padding: 15px 40px;
-            font-size: 18px;
-            text-decoration: none;
-            border-radius: 12px;
-            font-weight: bold;
-            transition: background-color 0.3s ease;">
-            🔍 Manually Filter Applicants
-        </a>
-    </div>
-    """,
-    unsafe_allow_html=True
-)
+st.markdown("### ")
+if st.button("🔍 Manually Filter Applicants", help="Go to the Filter page to manually refine applicants"):
+    st.switch_page("pages/Filter.py")
+
 
 st.markdown("###")
