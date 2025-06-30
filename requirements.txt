@@ -6,3 +6,14 @@ pdfplumber
 Pillow 
 firebase-admin 
 openpyxl
+os
+requests
+uuid
+wordcloud
+matplotlib
+plotly
+geopy
+pandas
+groq
+pytesseract
+io

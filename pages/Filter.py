@@ -11,7 +11,6 @@ st.set_page_config(page_title="Resume Filter", page_icon="🧠", layout="wide")
 # Apply styling
 apply_sidebar_style()
 set_background_css()
-
 hide_sidebar_pages()
 require_login()
 

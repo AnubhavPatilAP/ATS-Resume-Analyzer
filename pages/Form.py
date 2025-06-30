@@ -11,10 +11,6 @@ set_background_css()
 hide_sidebar_pages()
 require_login()
 
-
-
-
-
 # Initialize Firebase
 if not firebase_admin._apps:
     cred = credentials.Certificate('test-23ffe-cf207eed55fe.json')
@@ -119,13 +115,13 @@ if submitted:
             criteria_id = str(uuid.uuid4())
             db.collection("criteria").document(user_id).collection("submissions").document(criteria_id).set(criteria)
 
-            # ✅ Save to session state for next page
+            # Save to session state for next page
             st.session_state["current_criteria"] = criteria
 
-            # ✅ Clear any previously prefilling state
+            # Clear any previously prefilling state
             st.session_state.pop("prefill_criteria", None)
 
-            # ✅ Just rerun the script, let Form.py's top section handle the redirection
+            # Just rerun the script, let Form.py's top section handle the redirection
             st.session_state["redirect_to"] = "DataCollector"
             st.rerun()
 
