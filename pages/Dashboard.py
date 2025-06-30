@@ -3,7 +3,7 @@ import pandas as pd
 import plotly.express as px
 from wordcloud import WordCloud
 import matplotlib.pyplot as plt
-from manager import NavigationManager, require_login, apply_sidebar_style, set_background_css
+from manager import NavigationManager, require_login, apply_sidebar_style, set_background_css, hide_sidebar_pages
 import plotly.express as px
 from geopy.geocoders import Nominatim
 from geopy.extra.rate_limiter import RateLimiter
@@ -16,6 +16,7 @@ st.set_page_config(page_title="Resume Insights Dashboard", page_icon=":bar_chart
 set_background_css()
 apply_sidebar_style()
 require_login()
+hide_sidebar_pages()
 
 # --- Navigator ---
 nav_manager = NavigationManager()
@@ -247,7 +248,7 @@ else:
 
 
 # --- Spacing before footer action ---
-st.markdown("###")  # Adds vertical space
+st.markdown("###") 
 
 # --- Save cleaned_df for manual filter page ---
 st.session_state["cleaned_for_filter"] = cleaned_df

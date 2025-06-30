@@ -2,14 +2,14 @@ import streamlit as st
 import google.generativeai as genai
 import os
 import PyPDF2 as pdf
-from manager import NavigationManager, require_login, apply_sidebar_style, set_background_css
-import time
+from manager import NavigationManager, require_login, hide_sidebar_pages, apply_sidebar_style, set_background_css
 from dotenv import load_dotenv
 
 # Apply styling
 apply_sidebar_style()
 set_background_css()
 require_login()
+hide_sidebar_pages()
 
 load_dotenv()
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))

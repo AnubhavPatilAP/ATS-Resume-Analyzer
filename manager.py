@@ -1,12 +1,12 @@
 import streamlit as st
 
-# 🔐 Access Manager
+# ------------------ Access Manager ------------------
 def require_login():
     if not st.session_state.get("signed_in", False):
         st.warning("🔒 You must be logged in to access this page.")
         st.stop()
 
-# 🧭 Navigation Manager
+# ------------------ Navigation Manager ------------------
 class NavigationManager:
     def __init__(self):
         self.pages = ['Home', 'IndividualAnalyzer', 'Account']
@@ -25,7 +25,7 @@ class NavigationManager:
             if st.session_state.get("signed_in", False):
                 st.page_link("pages/Account.py", label="Account")
 
-# 🎨 Sidebar Styling
+# ------------------ Sidebar Styling ------------------
 def apply_sidebar_style():
     st.markdown("""
         <style>
@@ -62,7 +62,7 @@ def apply_sidebar_style():
         </style>
     """, unsafe_allow_html=True)
 
-# 🌌 Background, Input & Component Styling
+# ------------------ Background & Component Styling ------------------
 def set_background_css():
     st.markdown("""
     <style>
@@ -93,11 +93,10 @@ def set_background_css():
         background-position: center;
     }
 
-    /* Remove bottom white gap */
     .block-container {
         position: relative;
         z-index: 1;
-        padding-bottom: 0px ;
+        padding-bottom: 0px;
         margin-bottom: 300px !important;
         min-height: 100vh !important;
     }
@@ -151,3 +150,26 @@ def set_background_css():
     }
     </style>
     """, unsafe_allow_html=True)
+
+#----------------hide sidebar elements-----------------
+def hide_sidebar_pages():
+    st.markdown(
+        """
+        <style>
+        [data-testid="stSidebarNav"] ul {
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Hide specific sidebar page links based on visible text */
+        [data-testid="stSidebarNav"] li:has(a[href*="Form"]),
+        [data-testid="stSidebarNav"] li:has(a[href*="Dashboard"]),
+        [data-testid="stSidebarNav"] li:has(a[href*="DataCollector"]),
+        [data-testid="stSidebarNav"] li:has(a[href*="Filter"]) {
+            display: none !important;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
+

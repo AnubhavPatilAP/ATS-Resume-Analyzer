@@ -1,0 +1,21 @@
+# Visible in sidebar
+[[pages]]
+path = "Home.py"
+name = "Home"
+icon = "🏡"
+
+[[pages]]
+path = "pages/Account.py"
+name = "Account"
+icon = "👤"
+
+[[pages]]
+path = "pages/Individual_Analyzer.py"
+name = "Individual Analyzer"
+icon = "🧠"
+
+# ✅ Hidden from sidebar (do NOT list them)
+# - pages/Form.py
+# - pages/Dashboard.py
+# - pages/DataCollector.py
+# - pages/Filter.py

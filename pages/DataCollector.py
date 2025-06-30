@@ -10,12 +10,13 @@ import firebase_admin
 from firebase_admin import credentials, firestore
 from openpyxl.utils import get_column_letter
 import io
-from manager import require_login, apply_sidebar_style, set_background_css
+from manager import require_login, apply_sidebar_style, set_background_css, hide_sidebar_pages
 
 # --- Styling & Auth ---
 apply_sidebar_style()
 set_background_css()
 require_login()
+hide_sidebar_pages()
 
 # --- Load Environment Variables ---
 load_dotenv()

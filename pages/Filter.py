@@ -3,7 +3,7 @@ import pandas as pd
 import plotly.express as px
 from geopy.geocoders import Nominatim
 from geopy.extra.rate_limiter import RateLimiter
-from manager import NavigationManager, require_login, apply_sidebar_style, set_background_css
+from manager import NavigationManager, require_login, apply_sidebar_style, set_background_css, hide_sidebar_pages
 
 # --- Page setup ---
 st.set_page_config(page_title="Resume Filter", page_icon="🧠", layout="wide")
@@ -12,6 +12,7 @@ st.set_page_config(page_title="Resume Filter", page_icon="🧠", layout="wide")
 apply_sidebar_style()
 set_background_css()
 require_login()
+hide_sidebar_pages()
 
 st.title("🔍 Manually Filter Applicants")
 
