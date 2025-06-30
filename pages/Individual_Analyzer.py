@@ -8,9 +8,9 @@ from dotenv import load_dotenv
 # Apply styling
 apply_sidebar_style()
 set_background_css()
-require_login()
-hide_sidebar_pages()
 
+hide_sidebar_pages()
+require_login()
 load_dotenv()
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 

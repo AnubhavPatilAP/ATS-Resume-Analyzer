@@ -1,4 +1,4 @@
-# Visible in sidebar
+# Visible pages
 [[pages]]
 path = "Home.py"
 name = "Home"
@@ -14,8 +14,19 @@ path = "pages/Individual_Analyzer.py"
 name = "Individual Analyzer"
 icon = "🧠"
 
-# ✅ Hidden from sidebar (do NOT list them)
-# - pages/Form.py
-# - pages/Dashboard.py
-# - pages/DataCollector.py
-# - pages/Filter.py
+# Hidden pages (no icon = hidden from sidebar)
+[[pages]]
+path = "pages/Form.py"
+name = "Form"
+
+[[pages]]
+path = "pages/DataCollector.py"
+name = "DataCollector"
+
+[[pages]]
+path = "pages/Dashboard.py"
+name = "Dashboard"
+
+[[pages]]
+path = "pages/Filter.py"
+name = "Filter"

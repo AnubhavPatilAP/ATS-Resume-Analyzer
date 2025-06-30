@@ -14,9 +14,10 @@ from manager import require_login, apply_sidebar_style, set_background_css, hide
 
 # --- Styling & Auth ---
 apply_sidebar_style()
+hide_sidebar_pages()
 set_background_css()
 require_login()
-hide_sidebar_pages()
+
 
 # --- Load Environment Variables ---
 load_dotenv()
@@ -136,7 +137,12 @@ Resume Text:
 st.title("Resume Parser")
 
 # --- Get Job Criteria from Session ---
-job_criteria = st.session_state.get("prefill_criteria") or st.session_state.get("selected_job_criteria")
+job_criteria = (
+    st.session_state.get("current_criteria") or
+    st.session_state.get("prefill_criteria") or
+    st.session_state.get("selected_job_criteria")
+)
+
 
 if not job_criteria:
     st.warning("⚠️ Job criteria not found. Please fill the form or select from your history.")

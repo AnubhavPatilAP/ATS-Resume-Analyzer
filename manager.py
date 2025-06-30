@@ -2,6 +2,8 @@ import streamlit as st
 
 # ------------------ Access Manager ------------------
 def require_login():
+    if st.session_state.get("current_page") == "Home":
+        return
     if not st.session_state.get("signed_in", False):
         st.warning("🔒 You must be logged in to access this page.")
         st.stop()
@@ -163,6 +165,7 @@ def hide_sidebar_pages():
 
         /* Hide specific sidebar page links based on visible text */
         [data-testid="stSidebarNav"] li:has(a[href*="Form"]),
+        [data-testid="stSidebarNav"] li:has(a[href*="Individual_Analyzer"]),
         [data-testid="stSidebarNav"] li:has(a[href*="Dashboard"]),
         [data-testid="stSidebarNav"] li:has(a[href*="DataCollector"]),
         [data-testid="stSidebarNav"] li:has(a[href*="Filter"]) {
