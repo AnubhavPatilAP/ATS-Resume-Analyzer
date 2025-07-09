@@ -2,7 +2,7 @@ import streamlit as st
 import google.generativeai as genai
 import os
 import PyPDF2 as pdf
-from manager import NavigationManager, require_login, hide_sidebar_pages, apply_sidebar_style, set_background_css
+from manager import require_login, hide_sidebar_pages, apply_sidebar_style, set_background_css
 from dotenv import load_dotenv
 
 # Apply styling
@@ -17,9 +17,6 @@ genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 # Apply sidebar styling
 apply_sidebar_style()
 
-# Navigator
-nav_manager = NavigationManager()
-nav_manager.top_nav()
 
 # Login check
 require_login()

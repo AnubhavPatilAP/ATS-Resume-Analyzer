@@ -8,24 +8,6 @@ def require_login():
         st.warning("🔒 You must be logged in to access this page.")
         st.stop()
 
-# ------------------ Navigation Manager ------------------
-class NavigationManager:
-    def __init__(self):
-        self.pages = ['Home', 'IndividualAnalyzer', 'Account']
-
-    def top_nav(self):
-        col1, col2, col3, _ = st.columns([1.2, 3.1, 1, 10])
-
-        with col1:
-            st.page_link("Home.py", label="Home")
-
-        with col2:
-            if st.session_state.get("signed_in", False):
-                st.page_link("pages/Individual_Analyzer.py", label="IndividualAnalyzer")
-
-        with col3:
-            if st.session_state.get("signed_in", False):
-                st.page_link("pages/Account.py", label="Account")
 
 # ------------------ Sidebar Styling ------------------
 def apply_sidebar_style():

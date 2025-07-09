@@ -1,5 +1,5 @@
 import streamlit as st
-from manager import NavigationManager, apply_sidebar_style, set_background_css, hide_sidebar_pages
+from manager import  apply_sidebar_style, set_background_css, hide_sidebar_pages
 
 st.set_page_config(page_title="Homepage", page_icon="🏡")
 
@@ -8,10 +8,6 @@ st.set_page_config(page_title="Homepage", page_icon="🏡")
 set_background_css()
 apply_sidebar_style()
 hide_sidebar_pages()
-# Navigation bar
-nav_manager = NavigationManager()
-nav_manager.top_nav()
-
 
 
 

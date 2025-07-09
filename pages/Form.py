@@ -1,5 +1,5 @@
 import streamlit as st
-from manager import NavigationManager, require_login, apply_sidebar_style, set_background_css, hide_sidebar_pages
+from manager import require_login, apply_sidebar_style, set_background_css, hide_sidebar_pages
 import firebase_admin
 from firebase_admin import credentials, firestore
 import uuid

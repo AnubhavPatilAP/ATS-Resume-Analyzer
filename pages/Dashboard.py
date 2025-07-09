@@ -3,7 +3,7 @@ import pandas as pd
 import plotly.express as px
 from wordcloud import WordCloud
 import matplotlib.pyplot as plt
-from manager import NavigationManager, require_login, apply_sidebar_style, set_background_css, hide_sidebar_pages
+from manager import require_login, apply_sidebar_style, set_background_css, hide_sidebar_pages
 import plotly.express as px
 from geopy.geocoders import Nominatim
 from geopy.extra.rate_limiter import RateLimiter
@@ -18,10 +18,6 @@ apply_sidebar_style()
 hide_sidebar_pages()
 require_login()
 
-
-# --- Navigator ---
-nav_manager = NavigationManager()
-nav_manager.top_nav()
 
 # --- Title ---
 st.title("Resume Insights Dashboard")

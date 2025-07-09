@@ -4,7 +4,7 @@ import firebase_admin
 from firebase_admin import credentials, auth, firestore
 import requests
 import uuid
-from manager import NavigationManager, require_login, apply_sidebar_style, set_background_css, hide_sidebar_pages
+from manager import apply_sidebar_style, set_background_css, hide_sidebar_pages
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -14,8 +14,7 @@ load_dotenv()
 apply_sidebar_style()
 set_background_css()
 hide_sidebar_pages()
-nav_manager = NavigationManager()
-nav_manager.top_nav()
+
 
 # Initialize Firebase
 if not firebase_admin._apps:
