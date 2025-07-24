@@ -3,10 +3,9 @@ google-generativeai
 python-dotenv
 PyPDF2
 pdfplumber
-Pillow 
-firebase-admin 
+Pillow
+firebase-admin
 openpyxl
-os
 requests
 uuid
 wordcloud
@@ -16,4 +15,3 @@ geopy
 pandas
 groq
 pytesseract
-io
