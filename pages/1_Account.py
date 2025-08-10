@@ -7,7 +7,7 @@ import uuid
 from manager import apply_sidebar_style, set_background_css, hide_sidebar_pages
 from dotenv import load_dotenv
 
-# Load environment variables
+# Load environment variables from .env (optional, but Streamlit secrets takes priority)
 load_dotenv()
 
 # Apply global styling and navigation
@@ -15,17 +15,29 @@ apply_sidebar_style()
 set_background_css()
 hide_sidebar_pages()
 
-
-# Initialize Firebase
+# ---- Firebase Initialization from Streamlit secrets ----
 if not firebase_admin._apps:
-    cred = credentials.Certificate('test-23ffe-cf207eed55fe.json')
+    # Create credentials from secrets
+    cred = credentials.Certificate({
+        "type": "service_account",
+        "project_id": st.secrets["firebase"]["project_id"],
+        "private_key_id": st.secrets["firebase"]["private_key_id"],
+        "private_key": st.secrets["firebase"]["private_key"].replace("\\n", "\n"),
+        "client_email": st.secrets["firebase"]["client_email"],
+        "client_id": st.secrets["firebase"]["client_id"],
+        "auth_uri": st.secrets["firebase"]["auth_uri"],
+        "token_uri": st.secrets["firebase"]["token_uri"],
+        "auth_provider_x509_cert_url": st.secrets["firebase"]["auth_provider_x509_cert_url"],
+        "client_x509_cert_url": st.secrets["firebase"]["client_x509_cert_url"]
+    })
     firebase_admin.initialize_app(cred)
 
 db = firestore.client()
 
-# Firebase REST login using email/password
+# ---- Firebase REST login using email/password ----
 def login_user(email, password):
-    url = f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={os.getenv('FIREBASE_API_KEY')}"
+    api_key = st.secrets["firebase"]["apiKey"]  # from secrets.toml
+    url = f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={api_key}"
     payload = {
         "email": email,
         "password": password,
@@ -33,12 +45,12 @@ def login_user(email, password):
     }
     return requests.post(url, json=payload).json()
 
-# Clear session on logout
+# ---- Clear session on logout ----
 def logout():
     for key in ["signed_in", "username", "useremail", "user_id", "prefill_criteria", "selected_job_criteria"]:
         st.session_state.pop(key, None)
 
-# App Entry
+# ---- App Entry ----
 def app():
     st.title("Get Started")
 
