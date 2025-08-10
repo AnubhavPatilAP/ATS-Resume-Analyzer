@@ -11,10 +11,20 @@ set_background_css()
 hide_sidebar_pages()
 require_login()
 
-# Initialize Firebase
+# Initialize Firebase from st.secrets
 if not firebase_admin._apps:
-    cred = credentials.Certificate('test-23ffe-cf207eed55fe.json')
-    firebase_admin.initialize_app(cred)
+    try:
+        # Parse the full JSON string from Streamlit secrets
+        firebase_creds_secret = st.secrets.get("firebase_credentials")
+        if not firebase_creds_secret:
+            st.error("Firebase credentials not found in Streamlit secrets under 'firebase_credentials'.")
+            st.stop()
+        firebase_creds_dict = json.loads(firebase_creds_secret)
+        cred = credentials.Certificate(firebase_creds_dict)
+        firebase_admin.initialize_app(cred)
+    except Exception as e:
+        st.error(f"Failed to initialize Firebase Admin SDK: {e}")
+        st.stop()
 
 db = firestore.client()
 

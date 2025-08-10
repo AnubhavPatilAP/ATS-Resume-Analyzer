@@ -37,21 +37,18 @@ except Exception as e:
     st.stop()
 
 
-# --- Firebase Init (use st.secrets) ---
-# Put full service account JSON into st.secrets["firebase_credentials"] as a string
+# --- Firebase Init from st.secrets ---
 firebase_creds_secret = st.secrets.get("firebase_credentials")
 if not firebase_creds_secret:
-    st.error("Firebase service account not found. Please add 'firebase_credentials' to Streamlit secrets.")
+    st.error("Firebase service account not found. Please add 'firebase_credentials' JSON string to Streamlit secrets.")
     st.stop()
 
 try:
-    # Parse JSON string into dict
     firebase_creds_dict = json.loads(firebase_creds_secret)
 except Exception as e:
     st.error(f"Invalid firebase_credentials JSON in secrets: {e}")
     st.stop()
 
-# Init firebase_admin once
 if not firebase_admin._apps:
     try:
         cred = credentials.Certificate(firebase_creds_dict)
