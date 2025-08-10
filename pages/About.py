@@ -1,23 +1,23 @@
 import streamlit as st
-import os
+import json
 import firebase_admin
 from firebase_admin import credentials, firestore
 import requests
 from manager import apply_sidebar_style, set_background_css, hide_sidebar_pages
-from dotenv import load_dotenv
 import uuid
-
-# Load environment variables
-load_dotenv()
 
 # Apply global styling and navigation
 apply_sidebar_style()
 set_background_css()
 hide_sidebar_pages()
 
-# Initialize Firebase Admin (for Firestore)
+# ---------------------------
+# Initialize Firebase Admin (Firestore) using Streamlit Secrets
+# ---------------------------
 if not firebase_admin._apps:
-    cred = credentials.Certificate("test-23ffe-cf207eed55fe.json")
+    # Load service account JSON from Streamlit secrets
+    firebase_creds_dict = json.loads(st.secrets["firebase_credentials"])
+    cred = credentials.Certificate(firebase_creds_dict)
     firebase_admin.initialize_app(cred)
 
 db = firestore.client()
@@ -28,7 +28,7 @@ db = firestore.client()
 
 # Sign up user with REST API
 def signup_user(email, password):
-    url = f"https://identitytoolkit.googleapis.com/v1/accounts:signUp?key={os.getenv('FIREBASE_API_KEY')}"
+    url = f"https://identitytoolkit.googleapis.com/v1/accounts:signUp?key={st.secrets['FIREBASE_API_KEY']}"
     payload = {
         "email": email,
         "password": password,
@@ -38,7 +38,7 @@ def signup_user(email, password):
 
 # Login user with REST API
 def login_user(email, password):
-    url = f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={os.getenv('FIREBASE_API_KEY')}"
+    url = f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={st.secrets['FIREBASE_API_KEY']}"
     payload = {
         "email": email,
         "password": password,

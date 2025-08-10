@@ -10,6 +10,7 @@ import firebase_admin
 from firebase_admin import credentials, firestore
 from openpyxl.utils import get_column_letter
 import io
+import json
 from manager import require_login, apply_sidebar_style, set_background_css, hide_sidebar_pages
 
 # --- Styling & Auth ---
@@ -19,17 +20,48 @@ set_background_css()
 require_login()
 
 
-# --- Load Environment Variables ---
+# --- Load Environment Variables (local fallback) ---
+# Prefer st.secrets (Streamlit Cloud) but fallback to local env for development
 load_dotenv()
-groq_api_key = os.getenv("GROQ_API_KEY")
-client = Groq(api_key=groq_api_key)
+GROQ_API_KEY = st.secrets.get("GROQ_API_KEY") or os.getenv("GROQ_API_KEY")
 
-# --- Firebase Init ---
-FIREBASE_JSON = "D:/Resume Analyzer/test-23ffe-cf207eed55fe.json"
+if not GROQ_API_KEY:
+    st.error("Groq API key not found. Please set GROQ_API_KEY in Streamlit secrets or .env.")
+    st.stop()
+
+# Initialize Groq client
+try:
+    client = Groq(api_key=GROQ_API_KEY)
+except Exception as e:
+    st.error(f"Failed to initialize Groq client: {e}")
+    st.stop()
+
+
+# --- Firebase Init (use st.secrets) ---
+# Put full service account JSON into st.secrets["firebase_credentials"] as a string
+firebase_creds_secret = st.secrets.get("firebase_credentials")
+if not firebase_creds_secret:
+    st.error("Firebase service account not found. Please add 'firebase_credentials' to Streamlit secrets.")
+    st.stop()
+
+try:
+    # Parse JSON string into dict
+    firebase_creds_dict = json.loads(firebase_creds_secret)
+except Exception as e:
+    st.error(f"Invalid firebase_credentials JSON in secrets: {e}")
+    st.stop()
+
+# Init firebase_admin once
 if not firebase_admin._apps:
-    cred = credentials.Certificate(FIREBASE_JSON)
-    firebase_admin.initialize_app(cred)
+    try:
+        cred = credentials.Certificate(firebase_creds_dict)
+        firebase_admin.initialize_app(cred)
+    except Exception as e:
+        st.error(f"Failed to initialize Firebase Admin SDK: {e}")
+        st.stop()
+
 db = firestore.client()
+
 
 # --- Fields to Extract ---
 EXPECTED_FIELDS = [
@@ -38,22 +70,25 @@ EXPECTED_FIELDS = [
     "Key Skills", "ATS Score", "Remark"
 ]
 
+
 # --- Helper Functions ---
 def extract_text_from_pdf(file):
     try:
         with pdfplumber.open(file) as pdf:
             return ''.join(page.extract_text() or '' for page in pdf.pages).strip()
     except Exception as e:
-        st.error(f"PDF Error ({file.name}): {e}")
+        st.error(f"PDF Error ({getattr(file, 'name', 'uploaded file')}): {e}")
         return ""
+
 
 def extract_text_from_image(file):
     try:
         image = Image.open(file).convert("L")
         return pytesseract.image_to_string(image).strip()
     except Exception as e:
-        st.error(f"Image Error ({file.name}): {e}")
+        st.error(f"Image Error ({getattr(file, 'name', 'uploaded file')}): {e}")
         return ""
+
 
 def extract_info_with_groq(resume_text, timeout=90):
     if not client:
@@ -133,6 +168,7 @@ Resume Text:
         st.error(f"Groq error: {e}")
         return None
 
+
 # --- Page Title ---
 st.title("Resume Parser")
 
@@ -147,17 +183,17 @@ job_criteria = (
 if not job_criteria:
     st.warning("⚠️ Job criteria not found. Please fill the form or select from your history.")
     st.stop()
-    
-    
+
+
 # --- Optional Excel Upload ---
 with st.expander("📂 Already have parsed data? Upload Excel"):
     excel_file = st.file_uploader("Upload Excel", type=["xlsx"])
-    
+
     if excel_file:
         try:
             df = pd.read_excel(excel_file)
             missing = [col for col in EXPECTED_FIELDS if col not in df.columns]
-            
+
             if missing:
                 st.error(f"Missing columns: {', '.join(missing)}")
             else:
@@ -181,7 +217,7 @@ with st.expander("📂 Already have parsed data? Upload Excel"):
                 st.session_state.excel_data = buffer.read()
 
                 st.success("✅ Excel uploaded and validated.")
-        
+
         except Exception as e:
             st.error(f"❌ Excel error: {e}")
 
@@ -190,6 +226,7 @@ with st.expander("📂 Already have parsed data? Upload Excel"):
         if st.button("📊 Analyze Uploaded Excel"):
             st.session_state.analysis_source = "uploaded_excel"
             st.switch_page("pages/Dashboard.py")
+
 
 # --- Upload Resumes ---
 st.markdown("### 📄 Upload Resume Files")
@@ -229,8 +266,8 @@ if files and not st.session_state["processed"]:
         # Save to Excel
         excel_buffer = io.BytesIO()
         with pd.ExcelWriter(excel_buffer, engine='openpyxl') as writer:
-            df.to_excel(writer, index=False, sheet_name="Applicants")
-            worksheet = writer.book["Applicants"]
+            df.to_excel(writer, index=False, sheet_name='Applicants')
+            worksheet = writer.book['Applicants']
             for column_cells in worksheet.columns:
                 max_length = max((len(str(cell.value)) for cell in column_cells if cell.value), default=0)
                 worksheet.column_dimensions[get_column_letter(column_cells[0].column)].width = max_length + 2
@@ -243,6 +280,7 @@ if files and not st.session_state["processed"]:
             st.warning(f"⚠️ Failed to process: {', '.join(failed)}")
     else:
         st.warning("No valid data extracted.")
+
 
 # --- Display Results ---
 if st.session_state.get("processed") and "df" in st.session_state:
@@ -264,4 +302,3 @@ if st.session_state.get("processed") and "df" in st.session_state:
     if st.button("🔄 Reset"):
         for k in ["processed", "df", "excel_data", "analysis_source"]:
             st.session_state.pop(k, None)
-
