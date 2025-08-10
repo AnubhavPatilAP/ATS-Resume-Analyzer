@@ -1,5 +1,5 @@
+import json
 import streamlit as st
-import os
 import firebase_admin
 from firebase_admin import credentials, auth, firestore
 import requests
@@ -17,19 +17,9 @@ hide_sidebar_pages()
 
 # ---- Firebase Initialization from Streamlit secrets ----
 if not firebase_admin._apps:
-    # Create credentials from secrets
-    cred = credentials.Certificate({
-        "type": "service_account",
-        "project_id": st.secrets["firebase"]["project_id"],
-        "private_key_id": st.secrets["firebase"]["private_key_id"],
-        "private_key": st.secrets["firebase"]["private_key"].replace("\\n", "\n"),
-        "client_email": st.secrets["firebase"]["client_email"],
-        "client_id": st.secrets["firebase"]["client_id"],
-        "auth_uri": st.secrets["firebase"]["auth_uri"],
-        "token_uri": st.secrets["firebase"]["token_uri"],
-        "auth_provider_x509_cert_url": st.secrets["firebase"]["auth_provider_x509_cert_url"],
-        "client_x509_cert_url": st.secrets["firebase"]["client_x509_cert_url"]
-    })
+    # Load full service account JSON string and parse to dict
+    firebase_cred_dict = json.loads(st.secrets["firebase"]["service_account"])
+    cred = credentials.Certificate(firebase_cred_dict)
     firebase_admin.initialize_app(cred)
 
 db = firestore.client()
@@ -54,7 +44,7 @@ def logout():
 def app():
     st.title("Get Started")
 
-    # Init session
+    # Init session state keys
     for key in ["signed_in", "username", "useremail", "user_id", "prefill_criteria", "selected_job_criteria"]:
         if key not in st.session_state:
             st.session_state[key] = "" if key != "signed_in" else False
@@ -91,7 +81,7 @@ def app():
                             return
 
                         st.success("Logged in successfully!")
-                        st.switch_page("Home.py")
+                        st.switch_page("Home")  # Use page name, not filename
                     else:
                         st.error(f"Login failed: {result.get('error', {}).get('message', 'Unknown error')}")
 
@@ -108,8 +98,9 @@ def app():
                     st.warning("Password must be at least 6 characters.")
                 else:
                     try:
-                        uid = str(uuid.uuid4())
-                        auth.create_user(email=email, password=password, uid=uid)
+                        # Create user without passing uid (Firebase generates it)
+                        user_record = auth.create_user(email=email, password=password)
+                        uid = user_record.uid
 
                         db.collection("users").document(uid).set({
                             "email": email,
@@ -163,14 +154,14 @@ def app():
                 with col1:
                     if st.button("Use Criteria to Analyze Resumes", key=f"use_{submission_id}"):
                         st.session_state.selected_job_criteria = data
-                        st.switch_page("pages/DataCollector.py")
+                        st.switch_page("DataCollector")  # Use page name only
 
                 # Delete criteria
                 with col2:
                     if st.button("Delete", key=f"delete_{submission_id}"):
                         db.collection("criteria").document(user_id).collection("submissions").document(submission_id).delete()
                         st.success("Entry deleted.")
-                        st.rerun()
+                        st.experimental_rerun()
 
         if not found:
             st.info("No shortlisting criteria found.")
