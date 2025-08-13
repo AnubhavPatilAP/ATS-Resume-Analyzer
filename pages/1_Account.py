@@ -81,7 +81,7 @@ def app():
                             return
 
                         st.success("Logged in successfully!")
-                        st.switch_page("Home")  # Use page name, not filename
+                        st.switch_page("Home.py")  # Use page name, not filename
                     else:
                         st.error(f"Login failed: {result.get('error', {}).get('message', 'Unknown error')}")
 
