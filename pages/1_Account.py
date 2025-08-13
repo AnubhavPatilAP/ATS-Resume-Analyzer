@@ -154,7 +154,7 @@ def app():
                 with col1:
                     if st.button("Use Criteria to Analyze Resumes", key=f"use_{submission_id}"):
                         st.session_state.selected_job_criteria = data
-                        st.switch_page("DataCollector")  # Use page name only
+                        st.switch_page("DataCollector.py")  # Use page name only
 
                 # Delete criteria
                 with col2:
