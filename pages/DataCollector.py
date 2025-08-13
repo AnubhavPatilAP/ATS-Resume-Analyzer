@@ -38,7 +38,8 @@ except Exception as e:
 
 
 # --- Firebase Init from st.secrets ---
-firebase_creds_secret = st.secrets.get("firebase_credentials")
+firebase_creds_secret = st.secrets["firebase"]["service_account"]
+
 if not firebase_creds_secret:
     st.error("Firebase service account not found. Please add 'firebase_credentials' JSON string to Streamlit secrets.")
     st.stop()
