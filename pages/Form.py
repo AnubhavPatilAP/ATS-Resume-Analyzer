@@ -4,6 +4,8 @@ import firebase_admin
 from firebase_admin import credentials, firestore
 import uuid
 import os
+import json
+
 
 # Apply styling
 apply_sidebar_style()
