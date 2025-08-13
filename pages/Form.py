@@ -15,7 +15,8 @@ require_login()
 if not firebase_admin._apps:
     try:
         # Parse the full JSON string from Streamlit secrets
-        firebase_creds_secret = st.secrets.get("firebase_credentials")
+        firebase_creds_secret = st.secrets["firebase"]["service_account"]
+
         if not firebase_creds_secret:
             st.error("Firebase credentials not found in Streamlit secrets under 'firebase_credentials'.")
             st.stop()
