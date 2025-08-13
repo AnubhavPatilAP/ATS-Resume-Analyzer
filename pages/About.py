@@ -55,3 +55,5 @@ We value your privacy. All resumes and extracted data are stored securely and us
 ### 🚀 Why Use Resume Analyzer?
 Whether you’re a **fresh graduate**, an **experienced professional**, or a **recruiter handling hundreds of applications**, the Resume Analyzer saves time, improves decision-making, and helps you focus on the **right opportunities**.
 """)
+st.write("")
+st.write("")
