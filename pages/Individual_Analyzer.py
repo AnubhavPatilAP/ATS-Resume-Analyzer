@@ -9,7 +9,7 @@ from manager import require_login, hide_sidebar_pages, apply_sidebar_style, set_
 apply_sidebar_style()
 set_background_css()
 hide_sidebar_pages()
-require_login()
+
 
 # ---------------------------
 # Configure Google Generative AI using Streamlit secrets
