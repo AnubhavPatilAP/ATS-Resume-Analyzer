@@ -23,7 +23,8 @@ require_login()
 # --- Load Environment Variables (local fallback) ---
 # Prefer st.secrets (Streamlit Cloud) but fallback to local env for development
 load_dotenv()
-GROQ_API_KEY = st.secrets.get("GROQ_API_KEY") or os.getenv("GROQ_API_KEY")
+GROQ_API_KEY = st.secrets["GROQ_API_KEY"]
+
 
 if not GROQ_API_KEY:
     st.error("Groq API key not found. Please set GROQ_API_KEY in Streamlit secrets or .env.")
