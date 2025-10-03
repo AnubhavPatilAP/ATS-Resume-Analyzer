@@ -59,27 +59,28 @@ def set_background_css():
         position: relative;
         overflow-x: hidden;
         overflow-y: auto;
+        scroll-behavior: smooth;
     }
 
     [data-testid="stAppViewContainer"]::before {
         content: "";
-        position: absolute;
+        position: fixed;
         top: 0;
         left: 0;
         width: 100%;
         height: 100%;
         z-index: 0;
         pointer-events: none;
-        opacity: 0.65;
-        background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 800 600' xmlns='http://www.w3.org/2000/svg'%3E%3Cg stroke='%23ffffff44' stroke-width='1' fill='none'%3E%3Cpolygon points='100,100 200,80 250,180 150,200'/%3E%3Cpolygon points='300,200 400,180 450,280 350,300'/%3E%3Cpolygon points='600,100 700,80 750,180 650,200'/%3E%3Cpolygon points='500,350 600,330 650,430 550,450'/%3E%3Cline x1='100' y1='100' x2='400' y2='180'/%3E%3Cline x1='300' y1='200' x2='650' y2='200'/%3E%3Cline x1='150' y1='200' x2='350' y2='300'/%3E%3Cline x1='450' y1='280' x2='600' y2='330'/%3E%3C/g%3E%3Cg fill='%23ffffff22'%3E%3Ccircle cx='100' cy='100' r='4'/%3E%3Ccircle cx='200' cy='80' r='4'/%3E%3Ccircle cx='250' cy='180' r='4'/%3E%3Ccircle cx='150' cy='200' r='4'/%3E%3Ccircle cx='300' cy='200' r='4'/%3E%3Ccircle cx='400' cy='180' r='4'/%3E%3Ccircle cx='450' cy='280' r='4'/%3E%3Ccircle cx='350' cy='300' r='4'/%3E%3Ccircle cx='600' cy='100' r='4'/%3E%3Ccircle cx='700' cy='80' r='4'/%3E%3Ccircle cx='750' cy='180' r='4'/%3E%3Ccircle cx='650' cy='200' r='4'/%3E%3Ccircle cx='500' cy='350' r='4'/%3E%3Ccircle cx='600' cy='330' r='4'/%3E%3Ccircle cx='650' cy='430' r='4'/%3E%3Ccircle cx='550' cy='450' r='4'/%3E%3C/g%3E%3C/svg%3E");
-        background-size: cover;
-        background-repeat: no-repeat;
-        background-position: center;
+        opacity: 0.15;
+        background-image: radial-gradient(circle at 20% 50%, rgba(255,255,255,0.1) 0%, transparent 50%),
+                          radial-gradient(circle at 80% 80%, rgba(255,255,255,0.1) 0%, transparent 50%),
+                          radial-gradient(circle at 40% 20%, rgba(255,255,255,0.08) 0%, transparent 40%);
     }
 
     .block-container {
         position: relative;
         z-index: 1;
+        padding-top: 2rem !important;
         padding-bottom: 0px;
         margin-bottom: 300px !important;
         min-height: 100vh !important;
