@@ -19,7 +19,7 @@ genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
 # ---------------------------
 # Gemini Pro response
 # ---------------------------
-def get_gemini_response(input_text, model_name='models/gemini-1.5-flash', timeout=90):
+def get_gemini_response(input_text, model_name='gemini-1.5-flash', timeout=90):
     try:
         model = genai.GenerativeModel(model_name)
         generation_config = genai.types.GenerationConfig()
