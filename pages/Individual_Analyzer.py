@@ -19,7 +19,7 @@ genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
 # ---------------------------
 # Gemini Pro response
 # ---------------------------
-def get_gemini_response(input_text, model_name='gemini-1.5-flash', timeout=90):
+def get_gemini_response(input_text, model_name='gemini-2.5-flash', timeout=90):
     try:
         model = genai.GenerativeModel(model_name)
         generation_config = genai.types.GenerationConfig()
@@ -96,7 +96,7 @@ if submit:
         if text:
             result = get_gemini_response(
                 input_prompt.format(text=text, jd=jd),
-                model_name='gemini-1.5-flash',
+                model_name='gemini-2.5-flash',
                 timeout=90
             )
             if result:
@@ -120,7 +120,7 @@ if submit2:
         if text:
             result2 = get_gemini_response(
                 input_prompt2.format(text=text, jd=jd, cust=cust),
-                model_name='gemini-1.5-flash',
+                model_name='gemini-2.5-flash',
                 timeout=90
             )
             if result2:
